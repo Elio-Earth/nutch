@@ -174,12 +174,26 @@ public class HttpWebClient {
     ChromeOptions chromeOptions = new ChromeOptions();
     chromeOptions.addArguments("--no-sandbox");
     chromeOptions.addArguments("--disable-extensions");
+    chromeOptions.addArguments("--enable-javascript");
+
+    // some other potential options in https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
+//    chromeOptions.add_argument("--incognito")
+//    chromeOptions.add_argument("--nogpu")
+//    chromeOptions.add_argument("--disable-gpu")
+//    chromeOptions.add_argument("--window-size=1280,1280")
+//    chromeOptions.add_experimental_option("excludeSwitches", ["enable-automation"])
+//    chromeOptions.add_experimental_option('useAutomationExtension', False)
+//    chromeOptions.add_argument('--disable-blink-features=AutomationControlled')
+
     // be sure to set selenium.enable.headless to true if no monitor attached
     // to your server
     if (enableHeadlessMode) {
       chromeOptions.addArguments("--headless");
     }
     WebDriver driver = new ChromeDriver(chromeOptions);
+
+    // some other potential options in https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
+    // driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver;
   }
 

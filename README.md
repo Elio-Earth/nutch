@@ -113,6 +113,13 @@ ant eclipse
 
 ### Intellij IDEA
 
+
+For Intellij IDEA, first install the [IvyIDEA Plugin](https://plugins.jetbrains.com/plugin/3612-ivyidea). then run ```ant eclipse```.
+
+Then open the project in IntelliJ. You may see popups like "Ant build scripts found", "Frameworks detected - IvyIDEA Framework detected". Just follow the simple steps in these dialogs.  
+
+The first time I did this I didn't see  the "Frameworks detected - IvyIDEA Framework detected" popup and it made it much harder. I tried the below but it still didn't work. I suggest re-opening the project and see if it works.
+
 Import the project into IntelliJ. Followed [this video](https://youtu.be/fMwZSTP__Ug).
 
 Open Intellij.
@@ -122,8 +129,6 @@ File > New > Project from Existing Sources.
 Select the nutch folder.
 
 On next screen select Create Project From Existing Sources. On the next screen, choose the proper location. On the next screen, choose "Create New Project" (vs Import). Go through the rest of the screens. Ensure you select Java 11 for the project.
-
-Once the project is opened, you may see popups like "Ant build scripts found", "Frameworks detected - IvyIDEA Framework detected". Select Accept.
 
 
 ### Eclipse

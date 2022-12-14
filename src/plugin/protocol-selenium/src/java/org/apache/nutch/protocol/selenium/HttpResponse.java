@@ -31,6 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Optional;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -272,7 +273,7 @@ public class HttpResponse implements Response {
       if (contentType != null) {
         if (contentType.contains("text/html")
             || contentType.contains("application/xhtml")) {
-          readPlainContent(url);
+          readPlainContent(url, Optional.of(userAgent));
         } else {
           try {
             int contentLength = Integer.MAX_VALUE;
@@ -356,8 +357,8 @@ public class HttpResponse implements Response {
    * -------------------------
    */
 
-  private void readPlainContent(URL url) throws IOException {
-    String page = HttpWebClient.getHtmlPage(url.toString(), conf);
+  private void readPlainContent(URL url, Optional<String> userAgent) throws IOException {
+    String page = HttpWebClient.getHtmlPage(url.toString(), conf, userAgent);
 
     content = page.getBytes("UTF-8");
   }

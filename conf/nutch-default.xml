@@ -2352,6 +2352,16 @@ Add scoring-metadata to the list of active plugins
 </property>
 
 <property>
+  <name>driver.load.delay</name>
+  <value></value>
+  <description>
+    The delay in milliseconds after the driver get's the page to use. This pertains
+    to Selenium but is implemented as a Thread.sleep() as some websites the Selenium delays
+    do not work.
+  </description>
+</property>
+
+<property>
   <name>take.screenshot</name>
   <value>false</value>
   <description>
@@ -2462,12 +2472,22 @@ Add scoring-metadata to the list of active plugins
  </description>
 </property>
 
+<property>
+  <name>script.load.delay</name>
+  <value>-1</value>
+  <description>
+    Sets the amount of time (in seconds) to wait for an asynchronous script to finish execution
+    before throwing an error. This option applies to Selenium. If not specified or negative then driver
+    does not wait for scripts.
+  </description>
+</property>
+
 <!-- headless options for Firefox and Chrome-->
 <property>
   <name>selenium.enable.headless</name>
   <value>false</value>
   <description>A Boolean value representing the headless option
-    for Firefix and Chrome drivers
+    for Firefox and Chrome drivers
   </description>
 </property>
 <!-- selenium firefox configuration; 
@@ -2526,6 +2546,35 @@ Add scoring-metadata to the list of active plugins
   <value>/root/chromedriver</value>
   <description>The path to the ChromeDriver binary</description>
 </property>
+<property>
+  <name>webdriver.chrome.log.debug.file</name>
+  <value></value>
+  <description>
+    A file path to store logs from the chrome driver. Leave blank to disable.
+    If enabled, it will also turn verbose logging on (webdriver.chrome.verboseLogging = true).
+  </description>
+</property>
+<property>
+  <name>webdriver.chrome.user.data.dir</name>
+  <value></value>
+  <description>Path to a directory to store user profile information.</description>
+</property>
+<property>
+  <name>webdriver.chrome.console.log.output</name>
+  <value>false</value>
+  <description>Whether to log Chrome console log lines to stdout. These get printed with INFO priority.</description>
+</property>
+<property>
+  <name>webdriver.chrome.js.exception.output</name>
+  <value>false</value>
+  <description>Whether to output JS exceptions to log. They get printed with ERROR priority.</description>
+</property>
+<property>
+  <name>evade.page.js.debug</name>
+  <value>false</value>
+  <description>Outputs a variety of javascript object values which are overriden by the evade plugin.</description>
+</property>
+
 <!-- end of selenium chrome configurations -->
 
 <!-- protocol-interactiveselenium configuration -->

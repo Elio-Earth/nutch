@@ -31,6 +31,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.net.ssl.SSLContext;
@@ -277,7 +278,7 @@ public class HttpResponse implements Response {
       if (contentType != null) {
         if (contentType.contains("text/html")
             || contentType.contains("application/xhtml")) {
-          readPlainContent(url);
+          readPlainContent(url, Optional.of(userAgent));
         } else {
           try {
             int contentLength = Integer.MAX_VALUE;
@@ -387,7 +388,7 @@ public class HttpResponse implements Response {
     }
   }
 
-  private void readPlainContent(URL url) throws IOException {
+  private void readPlainContent(URL url, Optional<String> userAgent) throws IOException {
     if (handlers == null)
       loadSeleniumHandlers();
 
@@ -398,7 +399,7 @@ public class HttpResponse implements Response {
         continue;
       }
 
-      WebDriver driver = HttpWebClient.getDriverForPage(url.toString(), conf);
+      WebDriver driver = HttpWebClient.getDriverForPage(url.toString(), conf, userAgent);
 
       processedPage += handler.processDriver(driver);
 

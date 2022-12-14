@@ -30,3 +30,4 @@ crawl
 lib/spotbugs-*
 ivy/dependency-check-ant/*
 dist/
+.DS_Store

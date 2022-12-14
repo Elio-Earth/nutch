@@ -17,14 +17,20 @@
 package org.apache.nutch.protocol.selenium;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.InterruptedException;
+import java.lang.Thread;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,6 +43,7 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.JavascriptExecutor;
 
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -56,6 +63,8 @@ import org.openqa.selenium.remote.RemoteWebDriver;
 //import org.openqa.selenium.phantomjs.PhantomJSDriver;
 //import org.openqa.selenium.phantomjs.PhantomJSDriverService;
 
+import org.apache.nutch.protocol.selenium.ChromeEvadeWebClient;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,10 +73,8 @@ public class HttpWebClient {
   private static final Logger LOG = LoggerFactory
       .getLogger(MethodHandles.lookup().lookupClass());
 
-  public static WebDriver getDriverForPage(String url, Configuration conf) {
+  public static WebDriver getDriverForPage(String url, Configuration conf, Optional<String> userAgent) {
     WebDriver driver = null;
-    long pageLoadWait = conf.getLong("page.load.delay", 3);
-
     try {
       String driverType = conf.get("selenium.driver", "firefox");
       boolean enableHeadlessMode = conf.getBoolean("selenium.enable.headless",
@@ -82,7 +89,7 @@ public class HttpWebClient {
       case "chrome":
         String chromeDriverPath = conf.get("selenium.grid.binary",
             "/root/chromedriver");
-        driver = createChromeWebDriver(chromeDriverPath, enableHeadlessMode);
+        driver = createChromeWebDriver(chromeDriverPath, enableHeadlessMode, conf, userAgent);
         break;
       case "remote":
         String seleniumHubHost = conf.get("selenium.hub.host", "localhost");
@@ -127,8 +134,14 @@ public class HttpWebClient {
       }
       LOG.debug("Selenium {} WebDriver selected.", driverType);
 
-      driver.manage().timeouts().pageLoadTimeout(pageLoadWait,
-          TimeUnit.SECONDS);
+      long pageLoadWaitSecs = conf.getLong("page.load.delay", 3);
+      driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(pageLoadWaitSecs));
+
+      long scriptLoadWaitSecs = conf.getLong("script.load.delay", -1);
+      if (scriptLoadWaitSecs > -1) {
+        driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(scriptLoadWaitSecs));
+      }
+
       driver.get(url);
     } catch (Exception e) {
       if (e instanceof TimeoutException) {
@@ -157,18 +170,30 @@ public class HttpWebClient {
   }
 
   public static WebDriver createChromeWebDriver(String chromeDriverPath,
-      boolean enableHeadlessMode) {
+      boolean enableHeadlessMode, Configuration conf, Optional<String> userAgent) {
     // if not specified, WebDriver will search your path for chromedriver
     System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+
+    String debugLogFile = conf.get("webdriver.chrome.log.debug.file", "");
+    if (debugLogFile.length() > 0) {
+      LOG.info("Enabling verbose logging of chromedriver at " + debugLogFile);
+      System.setProperty("webdriver.chrome.logfile", debugLogFile);
+      System.setProperty("webdriver.chrome.verboseLogging", "true");
+    }
+
     ChromeOptions chromeOptions = new ChromeOptions();
-    chromeOptions.addArguments("--no-sandbox");
-    chromeOptions.addArguments("--disable-extensions");
     // be sure to set selenium.enable.headless to true if no monitor attached
     // to your server
     if (enableHeadlessMode) {
       chromeOptions.addArguments("--headless");
     }
+
+    ChromeEvadeWebClient.addArguments(chromeOptions, conf);
+    
     WebDriver driver = new ChromeDriver(chromeOptions);
+
+    ChromeEvadeWebClient.enableChromeEvasion((ChromeDriver)driver, conf, userAgent);
+
     return driver;
   }
 
@@ -187,7 +212,7 @@ public class HttpWebClient {
       boolean enableHeadlessMode) {
     ChromeOptions chromeOptions = new ChromeOptions();
     if (enableHeadlessMode) {
-      chromeOptions.setHeadless(true);
+    chromeOptions.setHeadless(true);
     }
     RemoteWebDriver driver = new RemoteWebDriver(seleniumHubUrl, chromeOptions);
     return driver;
@@ -244,15 +269,43 @@ public class HttpWebClient {
    *          the URL to fetch and render
    * @param conf
    *          the {@link org.apache.hadoop.conf.Configuration}
+   * @param userAgent
+   *          the userAgent of the HTTP request
    * @return the html page
    */
-  public static String getHtmlPage(String url, Configuration conf) {
-    WebDriver driver = getDriverForPage(url, conf);
+  public static String getHtmlPage(String url, Configuration conf, Optional<String> userAgent) {
+    WebDriver driver = getDriverForPage(url, conf, userAgent);
+
+    // some websites have a delay before they load their content (https://cordis.europa.eu/) which is not handled
+    // by selenium's pageLoadTimeout or scriptTimeout
+    long driverLoadWaitMillis = conf.getLong("driver.load.delay", -1);
+    if (driverLoadWaitMillis > 0) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(driverLoadWaitMillis);
+      } catch (InterruptedException ex) {
+        // need to set the interupt flag for others:
+        // https://docs.oracle.com/javase/tutorial/essential/concurrency/interrupt.html
+        Thread.currentThread().interrupt();
+      }
+    }
 
     try {
       if (conf.getBoolean("take.screenshot", false)) {
         takeScreenshot(driver, conf);
       }
+      if (conf.getBoolean("evade.page.js.debug", false)) {
+        LOG.info("window.outerWidth=" + ((JavascriptExecutor) driver).executeScript("return window.outerWidth;"));
+        LOG.info("window.outerHeight=" + ((JavascriptExecutor) driver).executeScript("return window.outerHeight;"));
+        LOG.info("navigator.vendor=" + ((JavascriptExecutor) driver).executeScript("return navigator.vendor;"));
+        LOG.info("window.Notification=" + ((JavascriptExecutor) driver).executeScript("return window.Notification;"));
+        LOG.info("navigator.connection.rtt=" + ((JavascriptExecutor) driver).executeScript("return navigator.connection.rtt;"));
+        LOG.info("navigator.maxTouchPoints=" + ((JavascriptExecutor) driver).executeScript("return navigator.maxTouchPoints;"));
+        LOG.info("window.chrome=" + ((JavascriptExecutor) driver).executeScript("return window.chrome;"));
+        LOG.info("navigator.webdriver=" + ((JavascriptExecutor) driver).executeScript("return navigator.webdriver;"));
+        LOG.info("navigator.plugins.length=" + ((JavascriptExecutor) driver).executeScript("return navigator.plugins.length;"));
+        LOG.info("navigator.userAgent=" + ((JavascriptExecutor) driver).executeScript("return navigator.userAgent;"));
+      }
+
       return driver.getPageSource();
 
       // I'm sure this catch statement is a code smell ; borrowing it from
@@ -268,7 +321,7 @@ public class HttpWebClient {
   }
 
   public static String getHtmlPage(String url) {
-    return getHtmlPage(url, null);
+    return getHtmlPage(url, null, Optional.empty());
   }
 
   private static void takeScreenshot(WebDriver driver, Configuration conf) {

@@ -491,6 +491,29 @@ public class SegmentReader extends Configured implements Tool {
     return cs;
   }
 
+  public void listUrls(final Path segment, Writer writer,
+                  final Map<String, List<Writable>> results) throws Exception {
+    LOG.info("SegmentReader: List urls fetched '{}'", segment);
+
+//    CrawlDatum val = new CrawlDatum();
+    FileSystem fs = segment.getFileSystem(getConf());
+    Text key = new Text();
+
+    Path fetchDir = new Path(segment, CrawlDatum.FETCH_DIR_NAME);
+    if (fs.exists(fetchDir) && fs.getFileStatus(fetchDir).isDirectory()) {
+      CrawlDatum value = new CrawlDatum();
+      MapFile.Reader[] mreaders = MapFileOutputFormat.getReaders(fetchDir, getConf());
+      for (int i = 0; i < mreaders.length; i++) {
+        while (mreaders[i].next(key, value)) {
+          writer.write(key.toString());
+          writer.write("\n");
+        }
+        mreaders[i].close();
+      }
+    }
+    writer.flush();
+  }
+
   public static class SegmentReaderStats {
     public long start = -1L;
     public long end = -1L;
@@ -611,6 +634,8 @@ public class SegmentReader extends Configured implements Tool {
 
   private static final int MODE_GET = 2;
 
+  private static final int MODE_LIST_URLS = 3;
+
   @Override
   public int run(String[] args) throws Exception {
     if (args.length < 2) {
@@ -624,6 +649,8 @@ public class SegmentReader extends Configured implements Tool {
       mode = MODE_LIST;
     else if (args[0].equals("-get"))
       mode = MODE_GET;
+    else if (args[0].equals("-listurls"))
+      mode = MODE_LIST_URLS;
 
     // collect general options
     for (int i = 1; i < args.length; i++) {
@@ -710,6 +737,15 @@ public class SegmentReader extends Configured implements Tool {
           new OutputStreamWriter(System.out, StandardCharsets.UTF_8),
           new HashMap<>());
       return 0;
+    case MODE_LIST_URLS:
+      input = args[1];
+      if (input == null) {
+        System.err.println("Missing required argument: <segment_dir>");
+        usage();
+        return -1;
+      }
+      listUrls(new Path(input), new OutputStreamWriter(System.out, StandardCharsets.UTF_8), new HashMap<>());
+      return 0;
     default:
       System.err.println("Invalid operation: " + args[0]);
       usage();
@@ -719,7 +755,7 @@ public class SegmentReader extends Configured implements Tool {
 
   private static void usage() {
     System.err
-        .println("Usage: SegmentReader (-dump ... | -list ... | -get ...) [general options]\n");
+        .println("Usage: SegmentReader (-dump ... | -list ... | -get ... | -listurls) [general options]\n");
     System.err.println("* General options:");
     System.err.println("\t-nocontent\tignore content directory");
     System.err.println("\t-nofetch\tignore crawl_fetch directory");
@@ -755,6 +791,13 @@ public class SegmentReader extends Configured implements Tool {
         .println("  Get a specified record from a segment, and print it on System.out.\n");
     System.err.println("\t<segment_dir>\tname of the segment directory.");
     System.err.println("\t<keyValue>\tvalue of the key (url).");
+    System.err.println();
+    System.err
+            .println("* SegmentReader -listurls <segment_dir>");
+    System.err
+            .println("  List the URLS that were fetched in a <segment dir>");
+    System.err.println("\t<segment_dir>\tpath to the directory of the segment.");
+    System.err.println();
     System.err
         .println("\t\tNote: put double-quotes around strings with spaces.");
   }

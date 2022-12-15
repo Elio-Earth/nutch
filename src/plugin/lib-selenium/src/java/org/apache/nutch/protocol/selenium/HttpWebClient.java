@@ -171,19 +171,21 @@ public class HttpWebClient {
       boolean enableHeadlessMode) {
     // if not specified, WebDriver will search your path for chromedriver
     System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+    System.setProperty("webdriver.chrome.logfile", "/Users/kamil/chromedriver.log");
+    System.setProperty("webdriver.chrome.verboseLogging", "true");
     ChromeOptions chromeOptions = new ChromeOptions();
     chromeOptions.addArguments("--no-sandbox");
     chromeOptions.addArguments("--disable-extensions");
     chromeOptions.addArguments("--enable-javascript");
 
-    // some other potential options in https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
-//    chromeOptions.add_argument("--incognito")
-//    chromeOptions.add_argument("--nogpu")
-//    chromeOptions.add_argument("--disable-gpu")
-//    chromeOptions.add_argument("--window-size=1280,1280")
-//    chromeOptions.add_experimental_option("excludeSwitches", ["enable-automation"])
-//    chromeOptions.add_experimental_option('useAutomationExtension', False)
-//    chromeOptions.add_argument('--disable-blink-features=AutomationControlled')
+    // taken from https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
+    chromeOptions.addArguments("--incognito");
+    chromeOptions.addArguments("--nogpu");
+    chromeOptions.addArguments("--disable-gpu");
+    chromeOptions.addArguments("--window-size=1280,1280");
+    chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
+    chromeOptions.setExperimentalOption("useAutomationExtension", false);
+    chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
 
     // be sure to set selenium.enable.headless to true if no monitor attached
     // to your server

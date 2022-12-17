@@ -25,6 +25,8 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -160,7 +162,7 @@ public class HttpWebClient {
       boolean enableHeadlessMode) {
     // if not specified, WebDriver will search your path for chromedriver
     System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-    System.setProperty("webdriver.chrome.logfile", "/Users/kamil/chromedriver.log");
+    System.setProperty("webdriver.chrome.logfile", "/home/yarn/chromedriver.log");
     System.setProperty("webdriver.chrome.verboseLogging", "true");
     ChromeOptions chromeOptions = new ChromeOptions();
     chromeOptions.addArguments("--no-sandbox");
@@ -175,16 +177,15 @@ public class HttpWebClient {
     chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
     chromeOptions.setExperimentalOption("useAutomationExtension", false);
     chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
+    chromeOptions.addArguments("--user-data-dir=/home/yarn/");
 
     // be sure to set selenium.enable.headless to true if no monitor attached
     // to your server
     if (enableHeadlessMode) {
       chromeOptions.addArguments("--headless");
     }
+    
     WebDriver driver = new ChromeDriver(chromeOptions);
-
-    // some other potential options in https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
-    // driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver;
   }
 

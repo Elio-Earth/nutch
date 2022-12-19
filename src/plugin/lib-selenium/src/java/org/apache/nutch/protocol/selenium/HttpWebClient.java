@@ -39,6 +39,7 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.JavascriptExecutor;
 
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -164,20 +165,26 @@ public class HttpWebClient {
     System.setProperty("webdriver.chrome.driver", chromeDriverPath);
     System.setProperty("webdriver.chrome.logfile", "/home/yarn/chromedriver.log");
     System.setProperty("webdriver.chrome.verboseLogging", "true");
-    ChromeOptions chromeOptions = new ChromeOptions();
-    chromeOptions.addArguments("--no-sandbox");
-    chromeOptions.addArguments("--disable-extensions");
-    chromeOptions.addArguments("--enable-javascript");
 
     // taken from https://stackoverflow.com/questions/67617101/how-to-enable-javascript-with-headless-chrome-in-selenium
-    chromeOptions.addArguments("--incognito");
-    chromeOptions.addArguments("--nogpu");
-    chromeOptions.addArguments("--disable-gpu");
-    chromeOptions.addArguments("--window-size=1280,1280");
-    chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
-    chromeOptions.setExperimentalOption("useAutomationExtension", false);
-    chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
+    ChromeOptions chromeOptions = new ChromeOptions();
     chromeOptions.addArguments("--user-data-dir=/home/yarn/");
+    chromeOptions.addArguments("--lang=en-US");
+    chromeOptions.addArguments("--no-default-browser-check");
+    chromeOptions.addArguments("--no-first-run");
+    chromeOptions.addArguments("--no-sandbox");
+    chromeOptions.addArguments("--test-type");
+    chromeOptions.addArguments("--window-size=1920,1080");
+    chromeOptions.addArguments("--start-maximized");
+
+//    chromeOptions.addArguments("--disable-extensions");
+//    chromeOptions.addArguments("--enable-javascript");
+//    chromeOptions.addArguments("--incognito");
+//    chromeOptions.addArguments("--nogpu");
+//    chromeOptions.addArguments("--disable-gpu");
+//    chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
+//    chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
+//    chromeOptions.addArguments("--disable-blink-features");
 
     // be sure to set selenium.enable.headless to true if no monitor attached
     // to your server
@@ -186,6 +193,133 @@ public class HttpWebClient {
     }
     
     WebDriver driver = new ChromeDriver(chromeOptions);
+
+    ((JavascriptExecutor)driver).executeScript("Object.defineProperty(window, 'navigator', {\n" +
+            "                                                    value: new Proxy(navigator, {\n" +
+            "                                                            has: (target, key) => (key === 'webdriver' ? false : key in target),\n" +
+            "                                                            get: (target, key) =>\n" +
+            "                                                                    key === 'webdriver' ?\n" +
+            "                                                                    false :\n" +
+            "                                                                    typeof target[key] === 'function' ?\n" +
+            "                                                                    target[key].bind(target) :\n" +
+            "                                                                    target[key]\n" +
+            "                                                            })\n" +
+            "                                                });");
+    ((JavascriptExecutor)driver).executeScript("Object.defineProperty(navigator, 'maxTouchPoints', {get: () => 1});\n" +
+            "                            Object.defineProperty(navigator.connection, 'rtt', {get: () => 100});\n" +
+            "\n" +
+            "                            // https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/chrome-runtime.js\n" +
+            "                            window.chrome = {\n" +
+            "                                app: {\n" +
+            "                                    isInstalled: false,\n" +
+            "                                    InstallState: {\n" +
+            "                                        DISABLED: 'disabled',\n" +
+            "                                        INSTALLED: 'installed',\n" +
+            "                                        NOT_INSTALLED: 'not_installed'\n" +
+            "                                    },\n" +
+            "                                    RunningState: {\n" +
+            "                                        CANNOT_RUN: 'cannot_run',\n" +
+            "                                        READY_TO_RUN: 'ready_to_run',\n" +
+            "                                        RUNNING: 'running'\n" +
+            "                                    }\n" +
+            "                                },\n" +
+            "                                runtime: {\n" +
+            "                                    OnInstalledReason: {\n" +
+            "                                        CHROME_UPDATE: 'chrome_update',\n" +
+            "                                        INSTALL: 'install',\n" +
+            "                                        SHARED_MODULE_UPDATE: 'shared_module_update',\n" +
+            "                                        UPDATE: 'update'\n" +
+            "                                    },\n" +
+            "                                    OnRestartRequiredReason: {\n" +
+            "                                        APP_UPDATE: 'app_update',\n" +
+            "                                        OS_UPDATE: 'os_update',\n" +
+            "                                        PERIODIC: 'periodic'\n" +
+            "                                    },\n" +
+            "                                    PlatformArch: {\n" +
+            "                                        ARM: 'arm',\n" +
+            "                                        ARM64: 'arm64',\n" +
+            "                                        MIPS: 'mips',\n" +
+            "                                        MIPS64: 'mips64',\n" +
+            "                                        X86_32: 'x86-32',\n" +
+            "                                        X86_64: 'x86-64'\n" +
+            "                                    },\n" +
+            "                                    PlatformNaclArch: {\n" +
+            "                                        ARM: 'arm',\n" +
+            "                                        MIPS: 'mips',\n" +
+            "                                        MIPS64: 'mips64',\n" +
+            "                                        X86_32: 'x86-32',\n" +
+            "                                        X86_64: 'x86-64'\n" +
+            "                                    },\n" +
+            "                                    PlatformOs: {\n" +
+            "                                        ANDROID: 'android',\n" +
+            "                                        CROS: 'cros',\n" +
+            "                                        LINUX: 'linux',\n" +
+            "                                        MAC: 'mac',\n" +
+            "                                        OPENBSD: 'openbsd',\n" +
+            "                                        WIN: 'win'\n" +
+            "                                    },\n" +
+            "                                    RequestUpdateCheckStatus: {\n" +
+            "                                        NO_UPDATE: 'no_update',\n" +
+            "                                        THROTTLED: 'throttled',\n" +
+            "                                        UPDATE_AVAILABLE: 'update_available'\n" +
+            "                                    }\n" +
+            "                                }\n" +
+            "                            }\n" +
+            "\n" +
+            "                            // https://github.com/microlinkhq/browserless/blob/master/packages/goto/src/evasions/navigator-permissions.js\n" +
+            "                            if (!window.Notification) {\n" +
+            "                                window.Notification = {\n" +
+            "                                    permission: 'denied'\n" +
+            "                                }\n" +
+            "                            }\n" +
+            "\n" +
+            "                            const originalQuery = window.navigator.permissions.query\n" +
+            "                            window.navigator.permissions.__proto__.query = parameters =>\n" +
+            "                                parameters.name === 'notifications'\n" +
+            "                                    ? Promise.resolve({ state: window.Notification.permission })\n" +
+            "                                    : originalQuery(parameters)\n" +
+            "\n" +
+            "                            const oldCall = Function.prototype.call\n" +
+            "                            function call() {\n" +
+            "                                return oldCall.apply(this, arguments)\n" +
+            "                            }\n" +
+            "                            Function.prototype.call = call\n" +
+            "\n" +
+            "                            const nativeToStringFunctionString = Error.toString().replace(/Error/g, 'toString')\n" +
+            "                            const oldToString = Function.prototype.toString\n" +
+            "\n" +
+            "                            function functionToString() {\n" +
+            "                                if (this === window.navigator.permissions.query) {\n" +
+            "                                    return 'function query() { [native code] }'\n" +
+            "                                }\n" +
+            "                                if (this === functionToString) {\n" +
+            "                                    return nativeToStringFunctionString\n" +
+            "                                }\n" +
+            "                                return oldCall.call(oldToString, this)\n" +
+            "                            }\n" +
+            "                            // eslint-disable-next-line\n" +
+            "                            Function.prototype.toString = functionToString");
+    ((JavascriptExecutor)driver).executeScript("let objectToInspect = window,\n" +
+            "                        result = [];\n" +
+            "                    while(objectToInspect !== null)\n" +
+            "                    { result = result.concat(Object.getOwnPropertyNames(objectToInspect));\n" +
+            "                      objectToInspect = Object.getPrototypeOf(objectToInspect); }\n" +
+            "                    result.forEach(p => p.match(/.+_.+_(Array|Promise|Symbol)/ig)\n" +
+            "                                        &&delete window[p]&&console.log('removed',p))");
+//    ((JavascriptExecutor)driver).executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+//    ((JavascriptExecutor)driver).executeScript("Object.defineProperty(Navigator.prototype, 'webdriver', {\n" +
+//            "        set: undefined,\n" +
+//            "        enumerable: true,\n" +
+//            "        configurable: true,\n" +
+//            "        get: new Proxy(\n" +
+//            "            Object.getOwnPropertyDescriptor(Navigator.prototype, 'webdriver').get,\n" +
+//            "            { apply: (target, thisArg, args) => {\n" +
+//            "                // emulate getter call validation\n" +
+//            "                Reflect.apply(target, thisArg, args);\n" +
+//            "                return false;\n" +
+//            "            }}\n" +
+//            "        )\n" +
+//            "    });");
     return driver;
   }
 
@@ -270,6 +404,17 @@ public class HttpWebClient {
       if (conf.getBoolean("take.screenshot", false)) {
         takeScreenshot(driver, conf);
       }
+
+//      new Actions(driver).moveByOffset(13, 15).perform();
+
+      LOG.info("Kamil");
+      // https://stackoverflow.com/a/55972011/1000361
+      ((JavascriptExecutor)driver).executeScript("window.key = \"blahblah\";");
+
+      LOG.info("kamil window.key=" + ((JavascriptExecutor)driver).executeScript("return window.key;"));
+      LOG.info("kamil navigator.webdriver=" + ((JavascriptExecutor)driver).executeScript("return navigator.webdriver;"));
+      LOG.info("kamil navigator.plugins.length=" + ((JavascriptExecutor)driver).executeScript("return navigator.plugins.length;"));
+      LOG.info("kamil navigator.languages=" + ((JavascriptExecutor)driver).executeScript("return navigator.languages;"));
 
       String innerHtml = driver.findElement(By.tagName("body"))
           .getAttribute("innerHTML");

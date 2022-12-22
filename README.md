@@ -114,22 +114,40 @@ ant eclipse
 ### Intellij IDEA
 
 
-For Intellij IDEA, first install the [IvyIDEA Plugin](https://plugins.jetbrains.com/plugin/3612-ivyidea). then run ```ant eclipse```.
+For Intellij IDEA, first install the [IvyIDEA Plugin](https://plugins.jetbrains.com/plugin/3612-ivyidea). then run ```ant eclipse```. This will create the necessary
+.classpath and .project files so that Intellij can import the project in the next step.
 
-Then open the project in IntelliJ. You may see popups like "Ant build scripts found", "Frameworks detected - IvyIDEA Framework detected". Just follow the simple steps in these dialogs.  
+In Intellij IDEA, select File > New > Project from Existing Sources. Select the nutch home directory and click "Open".
 
-The first time I did this I didn't see  the "Frameworks detected - IvyIDEA Framework detected" popup and it made it much harder. I tried the below but it still didn't work. I suggest re-opening the project and see if it works.
+On the "Import Project" screen select the "Import project from external model" radio button and select "Eclipse".
+Click "Create". On the next screen the "Eclipse projects directory" should be already set to the nutch folder.
+Leave the "Create module files near .classpath files" radio button selected.
+Click "Next" on the next screens. On the project SDK screen select Java 11 and click "Create".
 
-Import the project into IntelliJ. Followed [this video](https://youtu.be/fMwZSTP__Ug).
+Once the project is imported, you will see a popup saying "Ant build scripts found", "Frameworks detected - IvyIDEA Framework detected". Click "Import".
+If you don't get the pop-up, I'd suggest going through the steps again as this happens from time to time. There is another
+Ant popup that asks you to configure the project. Do NOT click "Configure".
 
-Open Intellij.
+To import the code-style, Go to Intellij IDEA > Preferences > Editor > Code Style > Java.
 
-File > New > Project from Existing Sources.
+For the Scheme dropdown select "Project". Click the gear icon and select "Import Scheme" > "Eclipse XML file".
 
-Select the nutch folder.
+Select the eclipse-format.xml file and click "Open". On next screen check the "Current Scheme" checkbox and hit OK.
 
-On next screen select Create Project From Existing Sources. On the next screen, choose the proper location. On the next screen, choose "Create New Project" (vs Import). Go through the rest of the screens. Ensure you select Java 11 for the project.
 
+### Running in Intellij IDEA
+
+Running in Intellij
+
+- Open Run/Debug Configurations
+- Select "+" to create a new configuration and select "Application"
+- For "Main Class" enter a class with a main function (e.g. org.apache.nutch.indexer.IndexingJob).
+- For "Program Arguments" add the arguments needed for the class. You can get these by running the crawl executable for your job. Use full-qualified paths. (e.g. /Users/kamil/workspace/external/nutch/crawl/crawldb /Users/kamil/workspace/external/nutch/crawl/segments/20221222160141 -deleteGone)
+- For "Working Directory" enter "/Users/kamil/workspace/external/nutch/runtime/local".
+- Select "Modify options" > "Modify Classpath" and add the config directory belonging to the "Working Directory" from the previous step (e.g. /Users/kamil/workspace/external/nutch/runtime/local/conf). This will allow the resource loader to load that configuration.
+- Select "Modify options" > "Add VM Options". Add the VM options needed. You can get these by running the crawl executable for your job (e.g. -Xmx4096m -Dhadoop.log.dir=/Users/kamil/workspace/external/nutch/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=2 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true)
+
+**Note**: You will need to manually trigger a build through ANT to get latest updated changes when running. This is because the ant build system is separate from the Intellij one. 
 
 ### Eclipse
 If you are using Eclipse...
@@ -144,4 +162,3 @@ You must [configure the nutch-site.xml](https://cwiki.apache.org/confluence/disp
 Now create a Java Application Configuration, choose org.apache.nutch.crawl.Injector, add two paths as arguments. First one is the crawldb directory, second one is the URL directory where, the injector can read urls. Now run your configuration. 
 
 If we still see the ```No plugins found on paths of property plugin.folders="plugins"```, update the plugin.folders in the nutch-default.xml, this is a quick fix, but should not be used.
-

@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
-import java.util.StringTokenizer;
 import java.net.MalformedURLException;
 
 /** Adds basic searchable fields to a document. */
@@ -45,7 +44,15 @@ public class CCIndexingFilter implements IndexingFilter {
       .getLogger(MethodHandles.lookup().lookupClass());
 
   /** The name of the document field we use. */
-  public static String FIELD = "cc";
+  private static final String NAMESPACE = "cc";
+  private static final String URL_KEY = "url";
+  private static final String LICENSE_KEY = "license";
+  private static final String VERSION_KEY = "version";
+  private static final String META_KEY = "meta";
+  private static final String TYPE_KEY = "type";
+  private static final String FEATURES = "features";
+
+
 
   private Configuration conf;
 
@@ -61,23 +68,23 @@ public class CCIndexingFilter implements IndexingFilter {
         LOG.info("CC: indexing " + licenseUrl + " for: " + url.toString());
       }
 
-      // add the entire license as cc:license=xxx
-      addFeature(doc, "license=" + licenseUrl);
+      // add the entire license URL as cc:url=xxx
+      addField(doc, URL_KEY, licenseUrl);
 
       // index license attributes extracted of the license url
-      addUrlFeatures(doc, licenseUrl);
+      addFieldsFromUrl(doc, licenseUrl);
     }
 
     // index the license location as cc:meta=xxx
     String licenseLocation = metadata.get(CreativeCommons.LICENSE_LOCATION);
     if (licenseLocation != null) {
-      addFeature(doc, "meta=" + licenseLocation);
+      addField(doc, META_KEY, licenseLocation);
     }
 
     // index the work type cc:type=xxx
     String workType = metadata.get(CreativeCommons.WORK_TYPE);
     if (workType != null) {
-      addFeature(doc, workType);
+      addField(doc, TYPE_KEY, workType);
     }
 
     return doc;
@@ -85,25 +92,27 @@ public class CCIndexingFilter implements IndexingFilter {
 
   /**
    * Add the features represented by a license URL. Urls are of the form
-   * "http://creativecommons.org/licenses/xx-xx/xx/xx", where "xx" names a
+   * "http://creativecommons.org/licenses/xx-xx/xx", where "xx" names a
    * license feature.
    * @param doc a {@link org.apache.nutch.indexer.NutchDocument} to augment
    * @param urlString the url to extract features from
    */
-  public void addUrlFeatures(NutchDocument doc, String urlString) {
+  public void addFieldsFromUrl(NutchDocument doc, String urlString) {
     try {
       URL url = new URL(urlString);
 
-      // tokenize the path of the url, breaking at slashes and dashes
-      StringTokenizer names = new StringTokenizer(url.getPath(), "/-");
+      String[] pathParts = url.getPath().split("/");
 
-      if (names.hasMoreTokens())
-        names.nextToken(); // throw away "licenses"
-
-      // add a feature per component after "licenses"
-      while (names.hasMoreTokens()) {
-        String feature = names.nextToken();
-        addFeature(doc, feature);
+      if(pathParts.length != 4) {
+        // we start at 2 since index 0 is empty and
+        // index 1 is the "licenses" path segment
+        addField(doc, LICENSE_KEY, pathParts[2]);
+        for (String feature : pathParts[2].split("-")) {
+          addField(doc, FEATURES, feature);
+        }
+        addField(doc, VERSION_KEY, pathParts[3]);
+      } else {
+        LOG.warn("Unknown format for CC license URL: " + urlString);
       }
     } catch (MalformedURLException e) {
       if (LOG.isWarnEnabled()) {
@@ -112,8 +121,8 @@ public class CCIndexingFilter implements IndexingFilter {
     }
   }
 
-  private void addFeature(NutchDocument doc, String feature) {
-    doc.add(FIELD, feature);
+  private void addField(NutchDocument doc, String key, String value) {
+    doc.add(NAMESPACE + ":" + key, value);
   }
 
   @Override

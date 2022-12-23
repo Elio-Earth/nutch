@@ -307,7 +307,7 @@ public class HttpWebClient {
         LOG.info("navigator.userAgent=" + ((JavascriptExecutor) driver).executeScript("return navigator.userAgent;"));
       }
 
-      String innerHtml = driver.findElement(By.tagName("body"))
+      String innerHtml = driver.findElement(By.tagName("html"))
           .getAttribute("innerHTML");
       return innerHtml;
 

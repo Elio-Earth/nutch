@@ -155,7 +155,8 @@ public class CCParseFilter implements HtmlParseFilter {
         URL url = new URL(base, href); // resolve the url
 
         // check that it's a CC license URL
-        if ("http".equalsIgnoreCase(url.getProtocol())
+        if (("http".equalsIgnoreCase(url.getProtocol())
+            || "https".equalsIgnoreCase(url.getProtocol()))
             && "creativecommons.org".equalsIgnoreCase(url.getHost())
             && url.getPath() != null && url.getPath().startsWith("/licenses/")
             && url.getPath().length() > "/licenses/".length()) {

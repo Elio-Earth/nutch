@@ -16,10 +16,13 @@
  */
 package org.apache.nutch.parse.html;
 
+import java.lang.invoke.MethodHandles;
 import java.net.URL;
 
 import org.apache.nutch.metadata.Nutch;
 import org.apache.nutch.parse.HTMLMetaTags;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -31,6 +34,9 @@ import org.w3c.dom.NodeList;
  * stored in a HTMLMetaTags instance.
  */
 public class HTMLMetaProcessor {
+
+  private static final Logger LOG = LoggerFactory
+      .getLogger(MethodHandles.lookup().lookupClass());
 
   /**
    * Utility class with indicators for the robots directives "noindex" and
@@ -64,63 +70,72 @@ public class HTMLMetaProcessor {
 
       if ("meta".equalsIgnoreCase(node.getNodeName())) {
         NamedNodeMap attrs = node.getAttributes();
-        Node nameNode = null;
-        Node equivNode = null;
-        Node contentNode = null;
-        // Retrieves name, http-equiv and content attribues
+        Node nameAttr = null;
+        Node equivAttr = null;
+        Node contentAttr = null;
+        Node propertyAttr = null;
+        // Retrieves name, property, http-equiv and content attributes
         for (int i = 0; i < attrs.getLength(); i++) {
           Node attr = attrs.item(i);
           String attrName = attr.getNodeName().toLowerCase();
           if (attrName.equals("name")) {
-            nameNode = attr;
+            nameAttr = attr;
           } else if (attrName.equals("http-equiv")) {
-            equivNode = attr;
+            equivAttr = attr;
           } else if (attrName.equals("content")) {
-            contentNode = attr;
+            contentAttr = attr;
+          } else if (attrName.equals("property")) {
+            propertyAttr = attr;
           }
         }
 
-        if (nameNode != null) {
-          if (contentNode != null) {
-            String name = nameNode.getNodeValue().toLowerCase();
-            metaTags.getGeneralTags().add(name, contentNode.getNodeValue());
-            if (Nutch.ROBOTS_METATAG.equals(name)) {
-              String directives = contentNode.getNodeValue().toLowerCase();
-              int index = directives.indexOf("none");
-
-              if (index >= 0) {
-                metaTags.setNoIndex();
-                metaTags.setNoFollow();
+        Node[] nameAttrs = new Node[] {nameAttr, propertyAttr};
+        for(Node theAttr: nameAttrs) {
+          if (theAttr != null) {
+            if (contentAttr != null) {
+              String name = theAttr.getNodeValue().toLowerCase();
+              metaTags.getGeneralTags().add(name, contentAttr.getNodeValue());
+              if(LOG.isDebugEnabled()) {
+                LOG.debug("Added " + name + " to general tags.");
               }
+              if (Nutch.ROBOTS_METATAG.equals(name)) {
+                String directives = contentAttr.getNodeValue().toLowerCase();
+                int index = directives.indexOf("none");
 
-              index = directives.indexOf("all");
-              if (index >= 0) {
-                // do nothing...
-              }
+                if (index >= 0) {
+                  metaTags.setNoIndex();
+                  metaTags.setNoFollow();
+                }
 
-              index = directives.indexOf("noindex");
-              if (index >= 0) {
-                metaTags.setNoIndex();
-              }
+                index = directives.indexOf("all");
+                if (index >= 0) {
+                  // do nothing...
+                }
 
-              index = directives.indexOf("nofollow");
-              if (index >= 0) {
-                metaTags.setNoFollow();
-              }
+                index = directives.indexOf("noindex");
+                if (index >= 0) {
+                  metaTags.setNoIndex();
+                }
 
-              index = directives.indexOf("noarchive");
-              if (index >= 0) {
-                metaTags.setNoCache();
-              }
+                index = directives.indexOf("nofollow");
+                if (index >= 0) {
+                  metaTags.setNoFollow();
+                }
 
-            } // end if (name == robots)
+                index = directives.indexOf("noarchive");
+                if (index >= 0) {
+                  metaTags.setNoCache();
+                }
+
+              } // end if (name == robots)
+            }
           }
         }
 
-        if (equivNode != null) {
-          if (contentNode != null) {
-            String name = equivNode.getNodeValue().toLowerCase();
-            String content = contentNode.getNodeValue();
+        if (equivAttr != null) {
+          if (contentAttr != null) {
+            String name = equivAttr.getNodeValue().toLowerCase();
+            String content = contentAttr.getNodeValue();
             metaTags.getHttpEquivTags().setProperty(name, content);
             if ("pragma".equals(name)) {
               content = content.toLowerCase();

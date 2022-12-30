@@ -5,14 +5,13 @@ import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.RandomStringUtils;
 
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.devtools.v108.log.Log;
 import org.openqa.selenium.devtools.v108.page.Page;
-import org.openqa.selenium.devtools.v108.log.model.LogEntry;
-import org.openqa.selenium.devtools.v108.runtime.model.CallFrame;
 import org.openqa.selenium.devtools.v108.network.Network;
 
 import org.slf4j.Logger;
@@ -30,6 +29,10 @@ public class ChromeEvadeWebClient {
         if(StringUtils.isBlank(userDataDir)) {
             LOG.warn("No user data dir for chrome");
         } else {
+            if (!userDataDir.endsWith("/")) {
+                userDataDir += "/";
+            }
+            userDataDir += RandomStringUtils.randomAlphanumeric(20) + "/";
             LOG.info("Using chrome user data dir " + userDataDir);
             chromeOptions.addArguments("--user-data-dir=" + userDataDir);
         }
@@ -38,13 +41,14 @@ public class ChromeEvadeWebClient {
         chromeOptions.addArguments("--no-default-browser-check");
         chromeOptions.addArguments("--no-first-run");
         chromeOptions.addArguments("--no-sandbox");
-        chromeOptions.addArguments("--test-type");
+
         chromeOptions.addArguments("--window-size=1920,1080");
         chromeOptions.addArguments("--start-maximized");
-        chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
-        chromeOptions.addArguments("--disable-blink-features");
-        chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
 
+
+//        chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
+//        chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
+//        chromeOptions.addArguments("--test-type");
 //        chromeOptions.addArguments("--disable-extensions");
 //        chromeOptions.addArguments("--incognito");
 //        chromeOptions.addArguments("--disable-gpu");

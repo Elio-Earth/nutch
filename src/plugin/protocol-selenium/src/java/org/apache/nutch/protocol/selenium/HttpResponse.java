@@ -19,6 +19,7 @@ package org.apache.nutch.protocol.selenium;
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PushbackInputStream;
@@ -272,43 +273,20 @@ public class HttpResponse implements Response {
       // handle with Selenium only if content type in HTML or XHTML
       if (contentType != null &&
               (contentType.contains("text/html") || contentType.contains("application/xhtml"))) {
-        readPlainContent(url, Optional.of(userAgent));
+        readContentFromSelenium(url, Optional.of(userAgent));
       } else {
         try {
-          int contentLength = Integer.MAX_VALUE;
-          String contentLengthString = headers.get(Response.CONTENT_LENGTH);
-          if (contentLengthString != null) {
-            try {
-              contentLength = Integer.parseInt(contentLengthString.trim());
-            } catch (NumberFormatException ex) {
-              throw new HttpException("bad content length: " + contentLengthString);
-            }
-          }
+            readPlainContent(in);
 
-          if (http.getMaxContent() >= 0 && contentLength > http.getMaxContent()) {
-            contentLength = http.getMaxContent();
-          }
-
-          byte[] buffer = new byte[HttpBase.BUFFER_SIZE];
-          int bufferFilled = 0;
-          int totalRead = 0;
-          ByteArrayOutputStream out = new ByteArrayOutputStream();
-          while ((bufferFilled = in.read(buffer, 0, buffer.length)) != -1 &&
-                  totalRead + bufferFilled <= contentLength) {
-            totalRead += bufferFilled;
-            out.write(buffer, 0, bufferFilled);
-          }
-
-          content = out.toByteArray();
-
-        } catch (Exception e) {
-          if (code == 200) {
-            throw new IOException(e.toString());
-          }
-          // for codes other than 200 OK, we are fine with empty content
-        } finally {
-          if (in != null) {
-            in.close();
+            String contentEncoding = getHeader(Response.CONTENT_ENCODING);
+            if ("gzip".equals(contentEncoding) || "x-gzip".equals(contentEncoding)) {
+              content = http.processGzipEncoded(content, url);
+            } else if ("deflate".equals(contentEncoding)) {
+              content = http.processDeflateEncoded(content, url);
+            } else {
+              if (Http.LOG.isTraceEnabled()) {
+                Http.LOG.trace("fetched " + content.length + " bytes from " + url);
+              }
           }
         }
       }
@@ -320,6 +298,47 @@ public class HttpResponse implements Response {
     } finally {
       if (socket != null)
         socket.close();
+    }
+  }
+
+  private void readPlainContent(InputStream in) throws IOException {
+    try {
+      int contentLength = Integer.MAX_VALUE;
+      String contentLengthString = headers.get(Response.CONTENT_LENGTH);
+      if (contentLengthString != null) {
+        try {
+          contentLength = Integer.parseInt(contentLengthString.trim());
+        } catch (NumberFormatException ex) {
+          throw new HttpException(
+              "bad content length: " + contentLengthString);
+        }
+      }
+
+      if (http.getMaxContent() >= 0
+          && contentLength > http.getMaxContent()) {
+        contentLength = http.getMaxContent();
+      }
+
+      byte[] buffer = new byte[HttpBase.BUFFER_SIZE];
+      int bufferFilled = 0;
+      int totalRead = 0;
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      while ((bufferFilled = in.read(buffer, 0, buffer.length)) != -1
+          && totalRead + bufferFilled <= contentLength) {
+        totalRead += bufferFilled;
+        out.write(buffer, 0, bufferFilled);
+      }
+
+      content = out.toByteArray();
+
+    } catch (Exception e) {
+      if (code == 200)
+        throw new IOException(e.toString());
+      // for codes other than 200 OK, we are fine with empty content
+    } finally {
+      if (in != null) {
+        in.close();
+      }
     }
   }
 
@@ -358,7 +377,7 @@ public class HttpResponse implements Response {
    * -------------------------
    */
 
-  private void readPlainContent(URL url, Optional<String> userAgent) throws IOException {
+  private void readContentFromSelenium(URL url, Optional<String> userAgent) throws IOException {
     String page = HttpWebClient.getHtmlPage(url.toString(), conf, userAgent);
 
     content = page.getBytes("UTF-8");

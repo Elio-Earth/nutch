@@ -2958,4 +2958,29 @@ If true (default) the Sitemap parser rejects URLs not sharing the same
     Maximum sitemap size in bytes.
    </description>
 </property>
+
+<!-- RSS feed parser properties -->
+<property>
+  <name>feed.parse.links.store</name>
+  <value>true</value>
+  <description>
+    Whether to pass on the RSS content for a link down the chain to be indexed. The content here refers to what is
+    found in the RSS feed for the link not the content of the actual page that the link refers to. If this value
+    is true and feed.parse.links.follow is true, then more than likely will lead to data duplication as you will
+    index the RSS feed content for the link and the content of the link itself.
+  </description>
+</property>
+
+<property>
+  <name>feed.parse.links.follow</name>
+  <value>false</value>
+  <description>
+    Whether the links in an RSS feed should be fed into the next segment for scraping. This treats the RSS feed
+    similar to a normal webpage which has outlinks. If this value is true and feed.parse.links.store = true, then
+    more than likely will lead to data duplication as you will index the RSS feed content for the link and the
+    content of the link itself.
+  </description>
+</property>
+
 </configuration>
+

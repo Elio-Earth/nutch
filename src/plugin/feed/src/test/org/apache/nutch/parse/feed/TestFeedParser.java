@@ -44,15 +44,15 @@ import org.apache.nutch.util.NutchConfiguration;
  */
 public class TestFeedParser {
 
-  private String fileSeparator = System.getProperty("file.separator");
+  private final String fileSeparator = System.getProperty("file.separator");
 
   // This system property is defined in ./src/plugin/build-plugin.xml
-  private String sampleDir = System.getProperty("test.data", ".");
+  private final String sampleDir = System.getProperty("test.data", ".");
 
   // Make sure sample files are copied to "test.data" as specified in
   // ./src/plugin/feed/build.xml during plugin compilation.
 
-  private String[] sampleFiles = { "rsstest.rss" };
+  private final String[] sampleFiles = { "rsstest.rss" };
   /**
    * Calls the {@link FeedParser} on a sample RSS file and checks that there are
    * 3 {@link ParseResult} entries including the below 2 links:
@@ -109,6 +109,51 @@ public class TestFeedParser {
       if (!hasLink1 || !hasLink2 || !hasLink3) {
         Assert.fail("Outlinks read from sample rss file are not correct!");
       }
+    }
+
+  }
+
+  /**
+   * Calls the {@link FeedParser} on a sample RSS file and checks that there are
+   * 2 {@link ParseResult} outlinks to the following links created for
+   * processing in the next round of fetching.
+   * <ul>
+   * <li>http://www-scf.usc.edu/~mattmann/</li>
+   * <li>http://www.nutch.org</li>
+   * </ul>
+   *
+   *
+   * @throws ProtocolNotFound
+   *           If the {@link Protocol}Layer cannot be loaded (required to fetch
+   *           the {@link Content} for the RSS file).
+   * @throws ParseException
+   *           If the {@link Parser}Layer cannot be loaded.
+   */
+  @Test
+  public void testFollowLinks() throws ProtocolNotFound, ParseException {
+    Configuration conf = NutchConfiguration.create();
+    conf.setBoolean("feed.parse.links.follow", true);
+    conf.setBoolean("feed.parse.links.store", false);
+
+    for (int i = 0; i < sampleFiles.length; i++) {
+      String urlString = "file:" + sampleDir + fileSeparator + sampleFiles[i];
+      urlString = urlString.replace('\\', '/');
+
+      Protocol protocol = new ProtocolFactory(conf).getProtocol(urlString);
+      Content content = protocol.getProtocolOutput(new Text(urlString),
+          new CrawlDatum()).getContent();
+
+      ParseResult parseResult = new ParseUtil(conf).parseByExtensionId("feed", content);
+
+      Assert.assertEquals(1, parseResult.size());
+
+      Parse parse = parseResult.get(urlString);
+      Assert.assertNotNull(parse);
+
+      Outlink[] outlinks = parse.getData().getOutlinks();
+      Assert.assertEquals(2, outlinks.length);
+      Assert.assertEquals("http://www-scf.usc.edu/~mattmann/", outlinks[0].getToUrl());
+      Assert.assertEquals("http://www.nutch.org/", outlinks[1].getToUrl());
     }
 
   }

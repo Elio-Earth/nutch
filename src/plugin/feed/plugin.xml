@@ -37,8 +37,9 @@
       <implementation id="org.apache.nutch.parse.feed.FeedParser"
          class="org.apache.nutch.parse.feed.FeedParser">
          <parameter name="contentType" value="application/rss+xml" />
+         <!-- Multiple values for the same name here does not work and errors occur during parsing
          <parameter name="contentType" value="application/atom+xml" />
-         <parameter name="contentType" value="text/xml" />
+         <parameter name="contentType" value="text/xml" />  -->
          <parameter name="pathSuffix" value="rss" />
      </implementation>
     </extension>

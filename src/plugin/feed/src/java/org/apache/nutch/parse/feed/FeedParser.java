@@ -21,10 +21,13 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.apache.nutch.metadata.Nutch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -88,6 +91,9 @@ public class FeedParser implements Parser {
 
   private String defaultEncoding;
 
+  private boolean followLinks;
+  private boolean storeLinks;
+
   /**
    * Parses the given feed and extracts out and parsers all linked items within
    * the feed, using the underlying ROME feed parsing library.
@@ -122,25 +128,37 @@ public class FeedParser implements Parser {
           .getEmptyParseResult(content.getUrl(), getConf());
     }
 
-    String feedLink = feed.getLink();
-    try {
-      feedLink = normalizers.normalize(feedLink, URLNormalizers.SCOPE_OUTLINK);
-      if (feedLink != null)
-        feedLink = filters.filter(feedLink);
-    } catch (Exception e) {
-      feedLink = null;
-    }
+    String feedLink = this.normalizeAndFilterOutLink(feed.getLink());
 
     List<?> entries = feed.getEntries();
-    for (Object entry : entries) {
-      addToMap(parseResult, feed, feedLink, (SyndEntry) entry, content);
+
+    if (this.storeLinks) {
+      for (Object entry : entries) {
+        addToMap(parseResult, feed, feedLink, (SyndEntry) entry, content);
+      }
+    }
+
+    List<Outlink> outlinks = new ArrayList<>();
+    if (this.followLinks) {
+      for(Object entry: entries) {
+        SyndEntry se = (SyndEntry)entry;
+        try {
+          String link = normalizeAndFilterOutLink(se.getLink());
+          if (link != null) {
+            outlinks.add(new Outlink(se.getLink(), se.getTitle()));
+          }
+        } catch (MalformedURLException mu) {
+          LOG.error("Malformed URL " + se.getLink() + " in RSS feed " + feedLink);
+        }
+      }
     }
 
     String feedDesc = stripTags(feed.getDescriptionEx());
     String feedTitle = stripTags(feed.getTitleEx());
 
     parseResult.put(content.getUrl(), new ParseText(feedDesc), new ParseData(
-        new ParseStatus(ParseStatus.SUCCESS), feedTitle, new Outlink[0],
+        new ParseStatus(ParseStatus.SUCCESS), feedTitle, outlinks.toArray(
+        new Outlink[0]),
         content.getMetadata()));
 
     return parseResult;
@@ -171,6 +189,8 @@ public class FeedParser implements Parser {
     this.filters = new URLFilters(conf);
     this.defaultEncoding = conf.get("parser.character.encoding.default",
         "windows-1252");
+    this.followLinks = conf.getBoolean("feed.parse.links.follow", false);
+    this.storeLinks = conf.getBoolean("feed.parse.links.store", true);
   }
 
   /**
@@ -225,16 +245,7 @@ public class FeedParser implements Parser {
     Parse parse = null;
     SyndContent description = entry.getDescription();
 
-    try {
-      link = normalizers.normalize(link, URLNormalizers.SCOPE_OUTLINK);
-
-      if (link != null)
-        link = filters.filter(link);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return;
-    }
-
+    link = normalizeAndFilterOutLink(link);
     if (link == null)
       return;
 
@@ -357,6 +368,21 @@ public class FeedParser implements Parser {
       contentMeta.set(Response.CONTENT_TYPE, TEXT_PLAIN_CONTENT_TYPE);
     }
 
+  }
+
+  private String normalizeAndFilterOutLink(String link) {
+    try {
+      link = normalizers.normalize(link, URLNormalizers.SCOPE_OUTLINK);
+
+      if (link != null)
+        link = filters.filter(link);
+
+      return link;
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    return null;
   }
 
   private void mergeMetadata(Metadata first, Metadata second) {

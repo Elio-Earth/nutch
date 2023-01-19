@@ -42,8 +42,6 @@ import org.apache.nutch.parse.ParseData;
  */
 public class FeedIndexingFilter implements IndexingFilter {
 
-  public static final String dateFormatStr = "yyyyMMddHHmm";
-
   private Configuration conf;
 
   private final static String PUBLISHED_DATE = "publishedDate";

@@ -202,6 +202,8 @@ public class SitemapProcessor extends Configured implements Tool {
 
         if (tryDefaultSitemapXml && sitemaps.size() == 0) {
           sitemaps.add(url + "sitemap.xml");
+          sitemaps.add(url + "sitemap_index.xml");
+          sitemaps.add(url + "sitemap");
         }
         for (String sitemap : sitemaps) {
           context.getCounter("Sitemap", "sitemaps_from_hostname").increment(1);

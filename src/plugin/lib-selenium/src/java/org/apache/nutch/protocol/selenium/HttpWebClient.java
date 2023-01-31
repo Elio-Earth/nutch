@@ -201,7 +201,7 @@ public class HttpWebClient {
       boolean enableHeadlessMode) {
     FirefoxOptions firefoxOptions = new FirefoxOptions();
     if (enableHeadlessMode) {
-      firefoxOptions.setHeadless(true);
+      firefoxOptions.addArguments("--headless");
     }
     RemoteWebDriver driver = new RemoteWebDriver(seleniumHubUrl,
         firefoxOptions);
@@ -212,7 +212,7 @@ public class HttpWebClient {
       boolean enableHeadlessMode) {
     ChromeOptions chromeOptions = new ChromeOptions();
     if (enableHeadlessMode) {
-    chromeOptions.setHeadless(true);
+      chromeOptions.addArguments("--headless");
     }
     RemoteWebDriver driver = new RemoteWebDriver(seleniumHubUrl, chromeOptions);
     return driver;

@@ -52,6 +52,10 @@ public class JsonIndexWriter implements IndexWriter {
     /** list of fields in the JSON file */
     private String[] fields = new String[] {"id", "title", "content"};
 
+    /** A set of fields to force to be single-valued. Originally created to handle
+     * HTML meta attributes which sometimes are duplicated on a page. */
+    private Set<String> forceSingle = new HashSet<>();
+
     /** output path / directory */
     private String baseOutputPath = "";
     /** Output stream for json data. */
@@ -70,10 +74,16 @@ public class JsonIndexWriter implements IndexWriter {
      */
     @Override
     public void open(IndexWriterParams parameters) throws IOException {
+        forceSingle.addAll(List.of(parameters.getStrings(JsonConstants.FORCE_SINGLE_FIELDS, "")));
+
         fields = parameters.getStrings(JsonConstants.JSON_FIELDS, fields);
         LOG.info("fields =");
         for (String f : fields) {
-            LOG.info("\t" + f);
+            if (forceSingle.contains(f)) {
+                LOG.info("\t" + f + " (single value)");
+            } else {
+                LOG.info("\t" + f);
+            }
         }
 
         baseOutputPath = parameters.get(JsonConstants.JSON_BASE_OUTPUT_PATH);
@@ -87,7 +97,7 @@ public class JsonIndexWriter implements IndexWriter {
             baseOutputPath = baseOutputPath.substring(0, baseOutputPath.length() - 1);
         }
 
-        String outputPath = String.format("%s/insert=%s/", baseOutputPath, INSERTION_DATE_FORMAT.format(new Date()));
+        String outputPath = String.format("%s/insert_date=%s/", baseOutputPath, INSERTION_DATE_FORMAT.format(new Date()));
 
         Path outputDir = new Path(outputPath);
         FileSystem fs = outputDir.getFileSystem(config);
@@ -129,7 +139,7 @@ public class JsonIndexWriter implements IndexWriter {
             NutchField field = doc.getField(fields[i]);
             if (field != null) {
                 List<Object> values = field.getValues();
-                if (values.size() == 1) {
+                if (values.size() == 1 || forceSingle.contains(fields[i])) {
                     obj.put(fields[i], values.get(0));
                 } else {
                     obj.put(fields[i], values);

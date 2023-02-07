@@ -46,7 +46,7 @@ public class JsonIndexWriter implements IndexWriter {
     private static final Logger LOG = LoggerFactory
             .getLogger(MethodHandles.lookup().lookupClass());
     private static final String ENCODING = "UTF-8";
-    private static final DateFormat INSERTION_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+    private static final DateFormat DATE_PARTITION_FORMAT = new SimpleDateFormat("'y'=yyyy/'m'=MM/'d'=dd/'h'=HH");
 
     private Configuration config;
     /** list of fields in the JSON file */
@@ -97,7 +97,7 @@ public class JsonIndexWriter implements IndexWriter {
             baseOutputPath = baseOutputPath.substring(0, baseOutputPath.length() - 1);
         }
 
-        String outputPath = String.format("%s/insert_date=%s/", baseOutputPath, INSERTION_DATE_FORMAT.format(new Date()));
+        String outputPath = String.format("%s/%s/", baseOutputPath, DATE_PARTITION_FORMAT.format(new Date()));
 
         Path outputDir = new Path(outputPath);
         FileSystem fs = outputDir.getFileSystem(config);

@@ -449,6 +449,7 @@ public class FetcherThread extends Thread {
               break;
 
             case ProtocolStatus.EXCEPTION:
+              fit.datum.getMetaData().put(Nutch.FETCH_EXCEPTION_KEY, new Text(status.getMessage()));
               logError(fit.url, status.getMessage());
               int killedURLs = fetchQueues
                   .checkExceptionThreshold(fit.getQueueID());
@@ -517,6 +518,7 @@ public class FetcherThread extends Thread {
             message = StringUtils.stringifyException(t);
           }
           logError(fit.url, message);
+          addFetchExceptionTo(fit.datum, t);
           output(fit.url, fit.datum, null, ProtocolStatus.STATUS_FAILED,
               CrawlDatum.STATUS_FETCH_RETRY);
         }
@@ -526,6 +528,9 @@ public class FetcherThread extends Thread {
       if (LOG.isErrorEnabled()) {
         LOG.error("fetcher caught:", e);
       }
+      if (fit != null) {
+        addFetchExceptionTo(fit.datum, e);
+      }
     } finally {
       if (fit != null) {
         fetchQueues.finishFetchItem(fit);
@@ -534,6 +539,17 @@ public class FetcherThread extends Thread {
       LOG.info("{} {} -finishing thread {}, activeThreads={}", getName(),
           Thread.currentThread().getId(), getName(), activeThreads);
     }
+  }
+
+  public void addFetchExceptionTo(CrawlDatum crawlDatum, Throwable e) {
+    String message = e.getMessage();
+    if (e.getStackTrace().length > 0) {
+      message += "  \n  " + e.getStackTrace()[0];
+    }
+    if (e.getStackTrace().length > 1) {
+      message += "  \n  " + e.getStackTrace()[1];
+    }
+    crawlDatum.getMetaData().put(Nutch.FETCH_EXCEPTION_KEY, new Text(message));
   }
 
   private Text handleRedirect(FetchItem fit, String newUrl,

@@ -100,7 +100,7 @@ public class ProtocolStatus implements Writable {
   private long lastModified;
   private String[] args;
 
-  private static final HashMap<Integer, String> codeToName = new HashMap<>();
+  public static final HashMap<Integer, String> codeToName = new HashMap<>();
   static {
     codeToName.put(Integer.valueOf(SUCCESS), "success");
     codeToName.put(Integer.valueOf(FAILED), "failed");

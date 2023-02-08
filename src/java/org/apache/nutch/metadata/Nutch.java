@@ -52,6 +52,8 @@ public interface Nutch {
 
 	public static final String FETCH_STATUS_KEY = "_fst_";
 
+	public static final Text FETCH_EXCEPTION_KEY = new Text("_fex_");
+
   /**
    * Name to store the <a href="https://www.robotstxt.org/meta.html">robots
    * metatag</a> in {@link org.apache.nutch.parse.ParseData}'s metadata.

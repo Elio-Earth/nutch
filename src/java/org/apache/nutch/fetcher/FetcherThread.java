@@ -623,8 +623,11 @@ public class FetcherThread extends Thread {
   private CrawlDatum createRedirDatum(Text redirUrl, FetchItem fit, byte status) {
     CrawlDatum newDatum = new CrawlDatum(status, fit.datum.getFetchInterval(),
         fit.datum.getScore());
-    // transfer existing metadata
+    // transfer existing metadata except protocol status code (http status) and protocol status
+    // since these values are from the previous HTTP request.
     newDatum.getMetaData().putAll(fit.datum.getMetaData());
+    newDatum.getMetaData().remove(Nutch.PROTOCOL_STATUS_CODE_KEY);
+    newDatum.getMetaData().remove(Nutch.WRITABLE_PROTO_STATUS_KEY);
     try {
       scfilters.initialScore(redirUrl, newDatum);
     } catch (ScoringFilterException e) {

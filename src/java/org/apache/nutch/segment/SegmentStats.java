@@ -96,9 +96,12 @@ public class SegmentStats extends Configured implements Tool {
                     }
 
                     if (crawlDatum.getMetaData().containsKey(Nutch.WRITABLE_PROTO_STATUS_KEY)) {
-                        writable.setProtocolStatus(
-                                ((ProtocolStatus) crawlDatum.getMetaData().get(Nutch.WRITABLE_PROTO_STATUS_KEY)).getCode()
-                        );
+                        ProtocolStatus pstatus = (ProtocolStatus) crawlDatum.getMetaData().get(Nutch.WRITABLE_PROTO_STATUS_KEY);
+                        writable.setProtocolStatus(pstatus.getCode());
+                        // if it is a redirect, the first argument in the args should be the url we are redirecting to
+                        if (pstatus.isRedirect() && pstatus.getArgs().length > 0) {
+                            writable.setRedirectUrl(pstatus.getArgs()[0]);
+                        }
                     }
 
                     int httpStatusCode = -1;
@@ -217,6 +220,7 @@ public class SegmentStats extends Configured implements Tool {
         private String fetchException;
         private int parseStatus;
         private String parseException;
+        private String redirectUrl;
 
         public SegmentStatsWritable() {
             this.url = "";
@@ -228,6 +232,7 @@ public class SegmentStats extends Configured implements Tool {
             this.fetchException = null;
             this.parseStatus = -1;
             this.parseException = null;
+            this.redirectUrl = null;
         }
 
         public SegmentStatsWritable(String url) {
@@ -240,6 +245,7 @@ public class SegmentStats extends Configured implements Tool {
             this.fetchException = null;
             this.parseStatus = -1;
             this.parseException = null;
+            this.redirectUrl = null;
         }
 
         public String getUrl() {
@@ -302,6 +308,9 @@ public class SegmentStats extends Configured implements Tool {
             }
         }
 
+        public String getRedirectUrl() {
+            return redirectUrl;
+        }
 
         public void setNutchStatus(byte nutchStatus) {
             this.nutchStatus = nutchStatus;
@@ -335,6 +344,10 @@ public class SegmentStats extends Configured implements Tool {
             this.parseException = parseException;
         }
 
+        public void setRedirectUrl(String redirectUrl) {
+            this.redirectUrl = redirectUrl;
+        }
+
         @Override
         public void write(DataOutput dataOutput) throws IOException {
             Text.writeString(dataOutput, url);
@@ -346,6 +359,7 @@ public class SegmentStats extends Configured implements Tool {
             Text.writeString(dataOutput, fetchException);
             dataOutput.writeInt(parseStatus);
             Text.writeString(dataOutput, parseException);
+            Text.writeString(dataOutput, redirectUrl);
         }
 
         @Override
@@ -359,6 +373,7 @@ public class SegmentStats extends Configured implements Tool {
             fetchException = Text.readString(dataInput);
             parseStatus = dataInput.readInt();
             parseException = Text.readString(dataInput);
+            redirectUrl = Text.readString(dataInput);
         }
 
         @Override
@@ -366,12 +381,12 @@ public class SegmentStats extends Configured implements Tool {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             SegmentStatsWritable that = (SegmentStatsWritable) o;
-            return nutchStatus == that.nutchStatus && protocolStatus == that.protocolStatus && httpStatus == that.httpStatus && fetchInterval == that.fetchInterval && fetchTime == that.fetchTime && parseStatus == that.parseStatus && Objects.equals(url, that.url) && Objects.equals(fetchException, that.fetchException) && Objects.equals(parseException, that.parseException);
+            return nutchStatus == that.nutchStatus && protocolStatus == that.protocolStatus && httpStatus == that.httpStatus && fetchInterval == that.fetchInterval && fetchTime == that.fetchTime && parseStatus == that.parseStatus && Objects.equals(url, that.url) && Objects.equals(fetchException, that.fetchException) && Objects.equals(parseException, that.parseException) && Objects.equals(redirectUrl, that.redirectUrl);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(url, nutchStatus, protocolStatus, httpStatus, fetchInterval, fetchTime, fetchException, parseStatus, parseException);
+            return Objects.hash(url, nutchStatus, protocolStatus, httpStatus, fetchInterval, fetchTime, fetchException, parseStatus, parseException, redirectUrl);
         }
 
         @Override
@@ -394,7 +409,7 @@ public class SegmentStats extends Configured implements Tool {
             }
             return url + "," + nutchStatusName + "," + protocolStatusName + "," + httpStatus + ","
                     + fetchInterval + "," + fetchTime + "," + fetchException + "," + parseStatusName + "," +
-                    parseException;
+                    parseException + "," + redirectUrl;
         }
     }
 
@@ -423,6 +438,7 @@ public class SegmentStats extends Configured implements Tool {
                 data.put("fetch_exception", value.getFetchException());
                 data.put("parse_status", value.getParseStatusName());
                 data.put("parse_exception", value.getParseException());
+                data.put("redirectUrl", value.getRedirectUrl());
 
                 out.write(jsonWriter.writeValueAsBytes(data));
                 out.writeByte('\n');

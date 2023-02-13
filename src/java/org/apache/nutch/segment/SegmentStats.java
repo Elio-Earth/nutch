@@ -430,6 +430,8 @@ public class SegmentStats extends Configured implements Tool {
                 Map<String, Object> data = new HashMap<String, Object>();
 
                 data.put("url", value.getUrl());
+                data.put("host", URLUtil.getHost(value.getUrl()));
+                data.put("domain", URLUtil.getDomainName(value.getUrl()).toLowerCase());
                 data.put("nutch_status", value.getNutchStatusName());
                 data.put("protocol_status", value.getProtocolStatusName());
                 data.put("http_status_code", value.getHttpStatus());

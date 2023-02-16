@@ -465,10 +465,9 @@ public abstract class HttpBase implements Protocol {
       }
     } catch (Throwable e) {
       if (this.logger.isDebugEnabled() || !this.logUtil.logShort(e)) {
-        this.logger.error("Failed to get protocol output", e);
+        this.logger.error("Failed to get protocol output({})", urlString, e);
       } else {
-        this.logger.error("Failed to get protocol output: {}",
-            e.getClass().getName());
+        this.logger.error("Failed to get protocol output({}): {}", urlString, e.getClass().getName());
       }
       return new ProtocolOutput(null, new ProtocolStatus(e));
     }

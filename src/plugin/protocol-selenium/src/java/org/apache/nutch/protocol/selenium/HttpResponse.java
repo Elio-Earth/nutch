@@ -16,13 +16,7 @@
  */
 package org.apache.nutch.protocol.selenium;
 
-import java.io.BufferedInputStream;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.PushbackInputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
@@ -40,8 +34,9 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.Text;
+import org.apache.commons.lang.StringUtils;
 import org.apache.nutch.crawl.CrawlDatum;
+import org.apache.nutch.metadata.HttpHeaders;
 import org.apache.nutch.metadata.Metadata;
 import org.apache.nutch.metadata.SpellCheckedMetadata;
 import org.apache.nutch.net.protocols.HttpDateFormat;
@@ -54,13 +49,11 @@ import org.apache.nutch.protocol.http.api.HttpBase;
 
 public class HttpResponse implements Response {
 
-  private Http http;
-  private URL url;
-  private String orig;
-  private String base;
+  private final Http http;
+  private final URL url;
   private byte[] content;
   private int code;
-  private Metadata headers = new SpellCheckedMetadata();
+  private final Metadata headers = new SpellCheckedMetadata();
   // used for storing the http headers verbatim
   private StringBuffer httpHeaders;
 
@@ -69,7 +62,7 @@ public class HttpResponse implements Response {
   }
 
   /** The nutch configuration */
-  private Configuration conf = null;
+  private final Configuration conf;
 
   public HttpResponse(Http http, URL url, CrawlDatum datum)
       throws ProtocolException, IOException {
@@ -77,9 +70,41 @@ public class HttpResponse implements Response {
     this.conf = http.getConf();
     this.http = http;
     this.url = url;
-    this.orig = url.toString();
-    this.base = url.toString();
-    Scheme scheme = null;
+
+    Http.LOG.info("Fetching " + url);
+
+    String userAgent = http.getUserAgent();
+    if (StringUtils.isBlank(userAgent)) {
+      Http.LOG.error("User-agent is not set!");
+    }
+
+    // Allow to user to specify which file extensions for a URL to treat as a normal file where we
+    // connect to the url via plain HTTP. The rest go through to Selenium.
+    String[] docTypes = conf.getStrings("selenium.handle.raw.file.ext", "pdf");
+    Set<String> docTypesSet = new HashSet<>(Arrays.asList(docTypes));
+    String[] parts = url.getPath().split("\\.");
+    if (parts.length > 1 && docTypesSet.contains(parts[parts.length-1])) {
+     initializeFromFile(datum, userAgent);
+    } else {
+      initializeFromSelenium(userAgent);
+    }
+  }
+
+  private void initializeFromSelenium(String userAgent) throws UnsupportedEncodingException {
+    headers.add(Response.FETCH_TIME, Long.toString(System.currentTimeMillis()));
+
+    String page = HttpWebClient.getHtmlPage(url.toString(), conf, Optional.of(userAgent));
+
+    content = page.getBytes("UTF-8");
+
+    // Since we cannot get header or response information from Selenium if the request is successful
+    // we need to assume some things for further processing
+    code = 200;
+    headers.add(Response.CONTENT_TYPE, "text/html");
+  }
+
+  private void initializeFromFile(CrawlDatum datum, String userAgent) throws IOException, ProtocolException {
+    Scheme scheme;
 
     if ("http".equals(url.getProtocol())) {
       scheme = Scheme.HTTP;
@@ -89,16 +114,11 @@ public class HttpResponse implements Response {
       throw new HttpException("Unknown scheme (not http/https) for url:" + url);
     }
 
-    if (Http.LOG.isTraceEnabled()) {
-      Http.LOG.trace("fetching " + url);
-    }
-
     String path = "".equals(url.getFile()) ? "/" : url.getFile();
 
-    // some servers will redirect a request with a host line like
-    // "Host: <hostname>:80" to "http://<hpstname>/<orig_path>"- they
-    // don't want the :80...
-
+//     some servers will redirect a request with a host line like
+//     "Host: <hostname>:80" to "http://<hpstname>/<orig_path>"- they
+//     don't want the :80...
     String host = url.getHost();
     int port;
     String portString;
@@ -138,31 +158,25 @@ public class HttpResponse implements Response {
           factory = sslContext.getSocketFactory();
         }
 
-        SSLSocket sslsocket = (SSLSocket) factory.createSocket(socket, sockHost,
-            sockPort, true);
+        SSLSocket sslsocket = (SSLSocket) factory.createSocket(socket, sockHost, sockPort, true);
         sslsocket.setUseClientMode(true);
 
         // Get the protocols and ciphers supported by this JVM
-        Set<String> protocols = new HashSet<String>(
-            Arrays.asList(sslsocket.getSupportedProtocols()));
-        Set<String> ciphers = new HashSet<String>(
-            Arrays.asList(sslsocket.getSupportedCipherSuites()));
+        Set<String> protocols = new HashSet<>(Arrays.asList(sslsocket.getSupportedProtocols()));
+        Set<String> ciphers = new HashSet<>(Arrays.asList(sslsocket.getSupportedCipherSuites()));
 
         // Intersect with preferred protocols and ciphers
         protocols.retainAll(http.getTlsPreferredProtocols());
         ciphers.retainAll(http.getTlsPreferredCipherSuites());
 
-        sslsocket.setEnabledProtocols(
-            protocols.toArray(new String[protocols.size()]));
-        sslsocket.setEnabledCipherSuites(
-            ciphers.toArray(new String[ciphers.size()]));
+        sslsocket.setEnabledProtocols(protocols.toArray(new String[protocols.size()]));
+        sslsocket.setEnabledCipherSuites(ciphers.toArray(new String[ciphers.size()]));
 
         sslsocket.startHandshake();
         socket = sslsocket;
       }
 
-      if (sockAddr != null
-          && conf.getBoolean("store.ip.address", false) == true) {
+      if (sockAddr != null && conf.getBoolean("store.ip.address", false)) {
         headers.add("_ip_", sockAddr.getAddress().getHostAddress());
       }
       // make request
@@ -184,12 +198,7 @@ public class HttpResponse implements Response {
 
       reqStr.append("Accept-Encoding: x-gzip, gzip, deflate\r\n");
 
-      String userAgent = http.getUserAgent();
-      if ((userAgent == null) || (userAgent.length() == 0)) {
-        if (Http.LOG.isErrorEnabled()) {
-          Http.LOG.error("User-agent is not set!");
-        }
-      } else {
+      if (StringUtils.isNotBlank(userAgent)) {
         reqStr.append("User-Agent: ");
         reqStr.append(userAgent);
         reqStr.append("\r\n");
@@ -216,24 +225,21 @@ public class HttpResponse implements Response {
         reqStr.append("\r\n");
       }
 
-      if (http.isCookieEnabled()
-          && datum.getMetaData().containsKey(HttpBase.COOKIE)) {
-        String cookie = ((Text) datum.getMetaData().get(HttpBase.COOKIE))
-            .toString();
+      if (http.isCookieEnabled() && datum.getMetaData().containsKey(HttpBase.COOKIE)) {
+        String cookie = datum.getMetaData().get(HttpBase.COOKIE).toString();
         reqStr.append("Cookie: ");
         reqStr.append(cookie);
         reqStr.append("\r\n");
       }
 
       if (http.isIfModifiedSinceEnabled() && datum.getModifiedTime() > 0) {
-        reqStr.append("If-Modified-Since: "
-            + HttpDateFormat.toString(datum.getModifiedTime()));
+        reqStr.append("If-Modified-Since: " + HttpDateFormat.toString(datum.getModifiedTime()));
         reqStr.append("\r\n");
       }
       reqStr.append("\r\n");
 
       // store the request in the metadata?
-      if (conf.getBoolean("store.http.request", false) == true) {
+      if (conf.getBoolean("store.http.request", false)) {
         headers.add("_request_", reqStr.toString());
       }
 
@@ -242,19 +248,18 @@ public class HttpResponse implements Response {
       req.write(reqBytes);
       req.flush();
 
-      PushbackInputStream in = // process response
-          new PushbackInputStream(new BufferedInputStream(
-              socket.getInputStream(), Http.BUFFER_SIZE), Http.BUFFER_SIZE);
+      // process response
+      PushbackInputStream in = new PushbackInputStream(
+              new BufferedInputStream(socket.getInputStream(), Http.BUFFER_SIZE), Http.BUFFER_SIZE);
 
       StringBuffer line = new StringBuffer();
 
       // store the http headers verbatim
-      if (conf.getBoolean("store.http.headers", false) == true) {
+      if (conf.getBoolean("store.http.headers", false)) {
         httpHeaders = new StringBuffer();
       }
 
-      headers.add("nutch.fetch.time",
-          Long.toString(System.currentTimeMillis()));
+      headers.add(Response.FETCH_TIME, Long.toString(System.currentTimeMillis()));
 
       boolean haveSeenNonContinueStatus = false;
       while (!haveSeenNonContinueStatus) {
@@ -269,26 +274,24 @@ public class HttpResponse implements Response {
 
       // Get Content type header
       String contentType = getHeader(Response.CONTENT_TYPE);
-
-      // handle with Selenium only if content type in HTML or XHTML
       if (contentType != null) {
-        if (contentType.contains("text/html")
-            || contentType.contains("application/xhtml")) {
-          readContentFromSelenium(url, Optional.of(userAgent));
-        } else {
-          readPlainContent(in);
+        if (contentType.contains("text/html") || contentType.contains("application/xhtml")) {
+          throw new ProtocolException("Processing HTTP contentType with file.");
+        }
 
-          String contentEncoding = getHeader(Response.CONTENT_ENCODING);
-          if ("gzip".equals(contentEncoding) || "x-gzip".equals(contentEncoding)) {
-            content = http.processGzipEncoded(content, url);
-          } else if ("deflate".equals(contentEncoding)) {
-            content = http.processDeflateEncoded(content, url);
-          } else {
-            if (Http.LOG.isTraceEnabled()) {
-              Http.LOG.trace("fetched " + content.length + " bytes from " + url);
-            }
+        readPlainContent(in);
+
+        String contentEncoding = getHeader(Response.CONTENT_ENCODING);
+        if ("gzip".equals(contentEncoding) || "x-gzip".equals(contentEncoding)) {
+          content = http.processGzipEncoded(content, url);
+        } else if ("deflate".equals(contentEncoding)) {
+          content = http.processDeflateEncoded(content, url);
+        } else {
+          if (Http.LOG.isTraceEnabled()) {
+            Http.LOG.trace("fetched " + content.length + " bytes from " + url);
           }
         }
+
         if (httpHeaders != null) {
           headers.add(Response.RESPONSE_HEADERS, httpHeaders.toString());
         }
@@ -300,6 +303,7 @@ public class HttpResponse implements Response {
       if (socket != null)
         socket.close();
     }
+
   }
 
   private void readPlainContent(InputStream in) throws IOException {
@@ -315,8 +319,7 @@ public class HttpResponse implements Response {
         }
       }
 
-      if (http.getMaxContent() >= 0
-          && contentLength > http.getMaxContent()) {
+      if (http.getMaxContent() >= 0 && contentLength > http.getMaxContent()) {
         contentLength = http.getMaxContent();
       }
 
@@ -366,17 +369,6 @@ public class HttpResponse implements Response {
 
   public byte[] getContent() {
     return content;
-  }
-
-  /*
-   * ------------------------- * <implementation:Response> *
-   * -------------------------
-   */
-
-  private void readContentFromSelenium(URL url, Optional<String> userAgent) throws IOException {
-    String page = HttpWebClient.getHtmlPage(url.toString(), conf, userAgent);
-
-    content = page.getBytes("UTF-8");
   }
 
   private int parseStatusLine(PushbackInputStream in, StringBuffer line)

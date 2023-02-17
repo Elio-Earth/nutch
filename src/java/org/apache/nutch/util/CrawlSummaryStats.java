@@ -18,14 +18,18 @@ package org.apache.nutch.util;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -36,18 +40,18 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.crawl.CrawlDatum;
@@ -74,9 +78,6 @@ public class CrawlSummaryStats extends Configured implements Tool {
   private static final Logger LOG = LoggerFactory
       .getLogger(MethodHandles.lookup().lookupClass());
 
-  private static final int MODE_HOST = 1;
-  private static final int MODE_DOMAIN = 2;
-
   @Override
   public int run(String[] args) throws Exception {
     Option helpOpt = new Option("h", "help", false, "Show this message");
@@ -95,13 +96,6 @@ public class CrawlSummaryStats extends Configured implements Tool {
         .hasArgs()
         .create("outputDir");
     @SuppressWarnings("static-access")
-    Option modeOpt = OptionBuilder
-        .withArgName("mode")
-        .isRequired()
-        .withDescription("Set statistics gathering mode (by 'host' or by 'domain')")
-        .hasArgs()
-        .create("mode");
-    @SuppressWarnings("static-access")
     Option numReducers = OptionBuilder
         .withArgName("numReducers")
         .withDescription("Optional number of reduce jobs to use. Defaults to 1")
@@ -112,7 +106,6 @@ public class CrawlSummaryStats extends Configured implements Tool {
     options.addOption(helpOpt);
     options.addOption(inDirs);
     options.addOption(outDir);
-    options.addOption(modeOpt);
     options.addOption(numReducers);
 
     CommandLineParser parser = new GnuParser();
@@ -146,13 +139,6 @@ public class CrawlSummaryStats extends Configured implements Tool {
 
     int mode = 0;
     String jobName = "CrawlSummaryStats";
-    if (cli.getOptionValue("mode").equals("host")) {
-      jobName = "Host CrawlSummaryStats";
-      mode = MODE_HOST;
-    } else if (cli.getOptionValue("mode").equals("domain")) {
-      jobName = "Domain CrawlSummaryStats";
-      mode = MODE_DOMAIN;
-    }
 
     Configuration conf = getConf();
     conf.setInt("domain.statistics.mode", mode);
@@ -169,7 +155,7 @@ public class CrawlSummaryStats extends Configured implements Tool {
 
     job.setInputFormatClass(SequenceFileInputFormat.class);
     FileOutputFormat.setOutputPath(job, new Path(outputDir));
-    job.setOutputFormatClass(TextOutputFormat.class);
+    job.setOutputFormatClass(DomainCrawlSummaryJsonOutputFormat.class);
 
     job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(DomainCrawlSummaryWritable.class);
@@ -202,12 +188,6 @@ public class CrawlSummaryStats extends Configured implements Tool {
 
   static class CrawlSummaryStatsMapper extends
       Mapper<Text, CrawlDatum, Text, DomainCrawlSummaryWritable> {
-    int mode = 0;
-
-    @Override
-    public void setup(Context context) {
-      mode = context.getConfiguration().getInt("domain.statistics.mode", MODE_DOMAIN);
-    }
 
     @Override
     public void map(Text urlText, CrawlDatum datum, Context context)
@@ -221,15 +201,7 @@ public class CrawlSummaryStats extends Configured implements Tool {
             urlText, e.getMessage());
         return;
       }
-      String urlKey = "";
-      switch (mode) {
-      case MODE_HOST:
-        urlKey = url.getHost();
-        break;
-      case MODE_DOMAIN:
-        urlKey = URLUtil.getDomainName(url);
-        break;
-      }
+      String host = url.getHost();
 
       int httpStatusCode = -1;
       if (datum.getMetaData().containsKey(Nutch.PROTOCOL_STATUS_CODE_KEY)) {
@@ -239,7 +211,7 @@ public class CrawlSummaryStats extends Configured implements Tool {
       }
 
       DomainCrawlSummaryWritable line = new DomainCrawlSummaryWritable(
-          urlKey,
+          host,
           CrawlDatum.statNames.get(datum.getStatus()),
           httpStatusCode
       );
@@ -288,17 +260,19 @@ public class CrawlSummaryStats extends Configured implements Tool {
 
   public static class DomainCrawlSummaryWritable implements Writable {
 
-    private String url;
+    private String host;
     private String nutchStatus;
     private int httpStatus;
     private long count;
 
     public DomainCrawlSummaryWritable() {
+      nutchStatus = "unknown";
+      httpStatus = -1;
+      count = 0;
     }
 
-    public DomainCrawlSummaryWritable(String url, String nutchStatus,
-        int httpStatus) {
-      this.url = url;
+    public DomainCrawlSummaryWritable(String host, String nutchStatus, int httpStatus) {
+      this.host = host;
       this.nutchStatus = nutchStatus;
       this.httpStatus = httpStatus;
       this.count = 1;
@@ -308,14 +282,14 @@ public class CrawlSummaryStats extends Configured implements Tool {
         DomainCrawlSummaryWritable other,
         long count
     ) {
-      this.url = other.getUrl();
+      this.host = other.getHost();
       this.nutchStatus = other.getNutchStatus();
       this.httpStatus = other.getHttpStatus();
       this.count = count;
     }
 
-    public String getUrl() {
-      return url;
+    public String getHost() {
+      return host;
     }
 
     public String getNutchStatus() {
@@ -331,12 +305,12 @@ public class CrawlSummaryStats extends Configured implements Tool {
     }
 
     public String key() {
-      return url + nutchStatus + httpStatus;
+      return host + nutchStatus + httpStatus;
     }
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-      Text.writeString(dataOutput, url);
+      Text.writeString(dataOutput, host);
       Text.writeString(dataOutput, nutchStatus);
       dataOutput.writeInt(httpStatus);
       dataOutput.writeLong(count);
@@ -344,7 +318,7 @@ public class CrawlSummaryStats extends Configured implements Tool {
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-      url = Text.readString(dataInput);
+      host = Text.readString(dataInput);
       nutchStatus = Text.readString(dataInput);
       httpStatus = dataInput.readInt();
       count = dataInput.readLong();
@@ -357,18 +331,72 @@ public class CrawlSummaryStats extends Configured implements Tool {
       if (o == null || getClass() != o.getClass())
         return false;
       DomainCrawlSummaryWritable that = (DomainCrawlSummaryWritable) o;
-      return httpStatus == that.httpStatus && count == that.count && url.equals(
-          that.url) && nutchStatus.equals(that.nutchStatus);
+      return httpStatus == that.httpStatus && count == that.count && host.equals(
+          that.host) && nutchStatus.equals(that.nutchStatus);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(url, nutchStatus, httpStatus, count);
+      return Objects.hash(host, nutchStatus, httpStatus, count);
     }
 
     @Override
     public String toString() {
-      return url + "," + nutchStatus + "," + httpStatus + "," + count;
+      return host + "," + nutchStatus + "," + httpStatus + "," + count;
+    }
+  }
+
+  public static class DomainCrawlSummaryJsonOutputFormat extends FileOutputFormat<Text, DomainCrawlSummaryWritable> {
+    protected static class LineRecordWriter extends RecordWriter<Text, DomainCrawlSummaryWritable> {
+      private final DataOutputStream out;
+      private final ObjectMapper jsonMapper;
+      private final ObjectWriter jsonWriter;
+
+      public LineRecordWriter(DataOutputStream out) {
+        this.out = out;
+        jsonMapper = new ObjectMapper();
+        jsonWriter = jsonMapper.writer();
+      }
+
+      @Override
+      public synchronized void write(Text key, DomainCrawlSummaryWritable value) throws IOException {
+        Map<String, Object> data = new HashMap<String, Object>();
+
+        data.put("host", value.getHost());
+        data.put("nutch_status", value.getNutchStatus());
+        data.put("http_status_code", value.getHttpStatus());
+        data.put("count", value.getCount());
+
+        out.write(jsonWriter.writeValueAsBytes(data));
+        out.writeByte('\n');
+      }
+
+      @Override
+      public synchronized void close(TaskAttemptContext context) throws IOException {
+        out.close();
+      }
+    }
+
+    @Override
+    public RecordWriter<Text, DomainCrawlSummaryWritable> getRecordWriter(
+            TaskAttemptContext context) throws IOException {
+      Configuration conf = context.getConfiguration();
+      boolean isCompressed = FileOutputFormat.getCompressOutput(context);
+      CompressionCodec codec = null;
+      String extension = "";
+      if (isCompressed) {
+        Class<? extends CompressionCodec> codecClass = getOutputCompressorClass(context, GzipCodec.class);
+        codec = ReflectionUtils.newInstance(codecClass, conf);
+        extension = codec.getDefaultExtension();
+      }
+      Path file = getDefaultWorkFile(context, extension);
+      FileSystem fs = file.getFileSystem(conf);
+      FSDataOutputStream fileOut = fs.create(file, false);
+      if (isCompressed) {
+        return new LineRecordWriter(new DataOutputStream(codec.createOutputStream(fileOut)));
+      } else {
+        return new LineRecordWriter(fileOut);
+      }
     }
   }
 

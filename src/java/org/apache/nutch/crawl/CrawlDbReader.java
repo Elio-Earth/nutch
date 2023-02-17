@@ -325,6 +325,7 @@ public class CrawlDbReader extends AbstractChecker implements Closeable {
       }
       Path file = getDefaultWorkFile(context, extension);
       FileSystem fs = file.getFileSystem(conf);
+      fs.setWriteChecksum(false);
       FSDataOutputStream fileOut = fs.create(file, false);
       if (isCompressed) {
         return new LineRecordWriter(
@@ -846,6 +847,12 @@ public class CrawlDbReader extends AbstractChecker implements Closeable {
     FileInputFormat.addInputPath(job, new Path(crawlDb, CrawlDb.CURRENT_NAME));
     job.setInputFormatClass(SequenceFileInputFormat.class);
     FileOutputFormat.setOutputPath(job, outFolder);
+
+    // We delete the output folder before we write to it, so that we do not get
+    // a FileAlreadyExistsException. Since we are dumping to this location, this prevents
+    // duplicate data
+    FileSystem fs = FileSystem.get(outFolder.toUri(), job.getConfiguration());
+    fs.delete(outFolder, true);
 
     if (format.equals("csv")) {
       job.setOutputFormatClass(CrawlDatumCsvOutputFormat.class);

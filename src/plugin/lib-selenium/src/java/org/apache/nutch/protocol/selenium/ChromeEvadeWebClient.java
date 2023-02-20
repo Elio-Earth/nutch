@@ -44,14 +44,6 @@ public class ChromeEvadeWebClient {
 
         chromeOptions.addArguments("--window-size=1920,1080");
         chromeOptions.addArguments("--start-maximized");
-
-
-//        chromeOptions.addArguments("--disable-blink-features=AutomationControlled");
-//        chromeOptions.setExperimentalOption("excludeSwitches", new String[] {"enable-automation"});
-//        chromeOptions.addArguments("--test-type");
-//        chromeOptions.addArguments("--disable-extensions");
-//        chromeOptions.addArguments("--incognito");
-//        chromeOptions.addArguments("--disable-gpu");
     }
 
     /**
@@ -78,7 +70,7 @@ public class ChromeEvadeWebClient {
         if (conf.getBoolean("webdriver.chrome.js.exception.output", false)) {
             LOG.info("Enabling logging of JS exceptions in Chrome.");
             devTools.getDomains().events().addJavascriptExceptionListener(jsException -> {
-                LOG.error("Chrome Devtools JS exception: " + jsException.getMessage());
+                LOG.warn("Chrome Devtools JS problem: " + jsException.getMessage());
                 jsException.printStackTrace();
             });
         }

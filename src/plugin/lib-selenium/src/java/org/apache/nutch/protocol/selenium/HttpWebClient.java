@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -186,6 +187,11 @@ public class HttpWebClient {
     // to your server
     if (enableHeadlessMode) {
       chromeOptions.addArguments("--headless");
+    }
+
+    String chromeBinary = conf.get("webdriver.chrome.binary", "");
+    if (StringUtils.isNotBlank(chromeBinary)) {
+      chromeOptions.setBinary(chromeBinary);
     }
 
     ChromeEvadeWebClient.addArguments(chromeOptions, conf);

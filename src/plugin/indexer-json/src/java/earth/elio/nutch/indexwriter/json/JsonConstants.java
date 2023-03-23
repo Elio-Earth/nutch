@@ -20,4 +20,12 @@ public interface JsonConstants {
     */
     String JSON_BASE_OUTPUT_PATH = "base_output_path";
 
+    /**
+     * Whether or not to compress the output using gzip.
+     */
+    String COMPRESS = "compress";
+
+    String GZIP = "gzip";
+    String NO_COMPRESS = "false";
+
 }

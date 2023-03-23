@@ -16,6 +16,7 @@
  */
 package earth.elio.nutch.indexwriter.json;
 
+import java.io.DataOutputStream;
 import java.lang.invoke.MethodHandles;
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -26,9 +27,9 @@ import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.nutch.indexer.*;
 import org.apache.nutch.util.NutchConfiguration;
@@ -62,8 +63,20 @@ public class JsonIndexWriter implements IndexWriter {
 
     /** output path / directory */
     private String baseOutputPath = "";
+
+    /** If this value is non-null, then it should either contain the compression algorithm to use
+     * or "false". "false" means it will not compress. If the value is null or an empty string then
+     * it will not compress the file.
+     */
+    private String compress;
+
+    private final static Set<String> ACCEPTED_COMPRESSIONS = new HashSet<>(1);
+    static {
+        ACCEPTED_COMPRESSIONS.add(JsonConstants.GZIP);
+    }
+
     /** Output stream for json data. */
-    protected FSDataOutputStream jsonOut;
+    protected DataOutputStream jsonOut;
 
     @Override
     public void open(Configuration conf, String name) throws IOException {
@@ -99,11 +112,20 @@ public class JsonIndexWriter implements IndexWriter {
         if (baseOutputPath.endsWith("/")) {
             baseOutputPath = baseOutputPath.substring(0, baseOutputPath.length() - 1);
         }
+        compress = parameters.get(JsonConstants.COMPRESS, "").trim().toLowerCase();
+        if (shouldCompressFile() && !ACCEPTED_COMPRESSIONS.contains(compress)) {
+            throw new IOException("Unsupported compression type " + compress);
+        }
 
+        createStream();
+    }
+
+    private void createStream() throws IOException {
         String outputPath = String.format("%s/%s/", baseOutputPath, DATE_PARTITION_FORMAT.format(new Date()));
-
         Path outputDir = new Path(outputPath);
         FileSystem fs = outputDir.getFileSystem(config);
+        // we do not want to write checksum files ever since it blows up EMR/Athena
+        fs.setWriteChecksum(false);
         if (!fs.exists(outputDir)) {
             fs.mkdirs(outputDir);
         }
@@ -115,13 +137,28 @@ public class JsonIndexWriter implements IndexWriter {
         }
 
         String filename = String.format("%s-%s-%s.jsonl", hostName, Long.valueOf(System.currentTimeMillis()).toString(), UUID.randomUUID());
-        Path jsonLocalOutFile = new Path(outputDir, filename);
-        if (fs.exists(jsonLocalOutFile)) {
-            // clean-up
-            LOG.warn("Removing existing output path {}", jsonLocalOutFile);
-            fs.delete(jsonLocalOutFile, true);
+        if (shouldCompressFile()) {
+            GzipCodec codec = new GzipCodec();
+            codec.setConf(config);
+            filename += codec.getDefaultExtension();
+
+            Path jsonLocalOutFile = new Path(outputDir, filename);
+            if (fs.exists(jsonLocalOutFile)) {
+                // clean-up
+                LOG.warn("Removing existing output path {}", jsonLocalOutFile);
+                fs.delete(jsonLocalOutFile, true);
+            }
+
+            jsonOut = new DataOutputStream(codec.createOutputStream(fs.create(jsonLocalOutFile)));
+        } else {
+            Path jsonLocalOutFile = new Path(outputDir, filename);
+            if (fs.exists(jsonLocalOutFile)) {
+                // clean-up
+                LOG.warn("Removing existing output path {}", jsonLocalOutFile);
+                fs.delete(jsonLocalOutFile, true);
+            }
+            jsonOut = new DataOutputStream(fs.create(jsonLocalOutFile));
         }
-        jsonOut = fs.create(jsonLocalOutFile);
     }
 
     private Collection<? extends String> retrieveFields(IndexWriterParams parameters, String configFieldName) throws IOException {
@@ -213,6 +250,10 @@ public class JsonIndexWriter implements IndexWriter {
                 this.baseOutputPath));
 
         return properties;
+    }
+
+    private boolean shouldCompressFile() {
+        return StringUtils.isNotBlank(compress) && !compress.equals(JsonConstants.NO_COMPRESS);
     }
 
     public static void main(String[] args) throws Exception {

@@ -207,6 +207,7 @@
       <param name="fields.single" value="id,url,title,content,tstamp,segment,digest,host,boost"/>
       <param name="fields.array" value=""/>
       <param name="base_output_path" value="jsonindexwriter"/>
+      <param name="compress" value="gzip"/>
     </parameters>
     <mapping>
       <copy />

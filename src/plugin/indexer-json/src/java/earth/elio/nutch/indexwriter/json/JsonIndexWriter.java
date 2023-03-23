@@ -49,12 +49,16 @@ public class JsonIndexWriter implements IndexWriter {
     private static final DateFormat DATE_PARTITION_FORMAT = new SimpleDateFormat("'y'=yyyy/'m'=MM/'d'=dd/'h'=HH");
 
     private Configuration config;
-    /** list of fields in the JSON file */
-    private String[] fields = new String[] {"id", "title", "content"};
-
-    /** A set of fields to force to be single-valued. Originally created to handle
-     * HTML meta attributes which sometimes are duplicated on a page. */
-    private Set<String> forceSingle = new HashSet<>();
+    /**
+     * A set of fields to force to be single-valued. This helps fields maintain a consistent schema
+     * across documents. Originally created to handle HTML meta attributes which sometimes are duplicated on a page.
+     */
+    private final Set<String> singleFields = new HashSet<>();
+    /**
+     * A set of fields to force to be multivalued. This helps fields maintain a consistent schema
+     * across documents.
+     */
+    private final Set<String> arrayFields = new HashSet<>();
 
     /** output path / directory */
     private String baseOutputPath = "";
@@ -74,16 +78,15 @@ public class JsonIndexWriter implements IndexWriter {
      */
     @Override
     public void open(IndexWriterParams parameters) throws IOException {
-        forceSingle.addAll(List.of(parameters.getStrings(JsonConstants.FORCE_SINGLE_FIELDS, "")));
+        singleFields.addAll(retrieveFields(parameters, JsonConstants.SINGLE_FIELDS));
+        arrayFields.addAll(retrieveFields(parameters, JsonConstants.ARRAY_FIELDS));
 
-        fields = parameters.getStrings(JsonConstants.JSON_FIELDS, fields);
         LOG.info("fields =");
-        for (String f : fields) {
-            if (forceSingle.contains(f)) {
-                LOG.info("\t" + f + " (single value)");
-            } else {
-                LOG.info("\t" + f);
-            }
+        for (String f : singleFields) {
+            LOG.info("\t" + f);
+        }
+        for (String f : arrayFields) {
+            LOG.info("\t" + f + " (array)");
         }
 
         baseOutputPath = parameters.get(JsonConstants.JSON_BASE_OUTPUT_PATH);
@@ -121,6 +124,16 @@ public class JsonIndexWriter implements IndexWriter {
         jsonOut = fs.create(jsonLocalOutFile);
     }
 
+    private Collection<? extends String> retrieveFields(IndexWriterParams parameters, String configFieldName) throws IOException {
+        String[] values = parameters.getStrings(configFieldName, null);
+        if (values == null) {
+            throw new IOException("Field " + configFieldName + " is missing value for JsonIndexWriter in index-writers.xml.");
+        } else if (values.length == 1 && values[0].trim().length() == 0) {
+            throw new IOException("Field " + configFieldName + " has a single empty value for JsonIndexWriter in index-writers.xml.");
+        }
+        return List.of(values);
+    }
+
     @Override
     public void delete(String key) throws IOException {
         // deletion of documents not supported
@@ -135,15 +148,24 @@ public class JsonIndexWriter implements IndexWriter {
     @Override
     public void write(NutchDocument doc) throws IOException {
         JSONObject obj = new JSONObject();
-        for (int i = 0; i < fields.length; i++) {
-            NutchField field = doc.getField(fields[i]);
-            if (field != null) {
+
+        for (String singleFieldName : singleFields) {
+            NutchField field = doc.getField(singleFieldName);
+            if (field == null) {
+                obj.put(singleFieldName, null);
+            } else {
                 List<Object> values = field.getValues();
-                if (values.size() == 1 || forceSingle.contains(fields[i])) {
-                    obj.put(fields[i], values.get(0));
-                } else {
-                    obj.put(fields[i], values);
-                }
+                obj.put(singleFieldName, values.get(0));
+            }
+        }
+
+        for (String arrayFieldName : arrayFields) {
+            NutchField field = doc.getField(arrayFieldName);
+            if (field == null) {
+                obj.put(arrayFieldName, new ArrayList<String>(0));
+            } else {
+                List<Object> values = field.getValues();
+                obj.put(arrayFieldName, values);
             }
         }
 
@@ -180,9 +202,11 @@ public class JsonIndexWriter implements IndexWriter {
     public Map<String, Map.Entry<String, Object>> describe() {
         Map<String, Map.Entry<String, Object>> properties = new LinkedHashMap<>();
 
-        properties.put(JsonConstants.JSON_FIELDS, new AbstractMap.SimpleEntry<>(
-                "List of fields (columns) in the JSON file",
-                this.fields == null ? "" : String.join(",", this.fields)));
+        properties.put(JsonConstants.SINGLE_FIELDS, new AbstractMap.SimpleEntry<>(
+                "List of single-valued fields (columns) in the JSON file",
+                String.join(",", this.singleFields)));
+        properties.put(JsonConstants.ARRAY_FIELDS, new AbstractMap.SimpleEntry<>(
+                "List of array fields (columns) in the JSON file", String.join(",", this.arrayFields)));
 
         properties.put(JsonConstants.JSON_BASE_OUTPUT_PATH, new AbstractMap.SimpleEntry<>(
                 "The base output path for the data. Must be specified. We add partition information to the end.",

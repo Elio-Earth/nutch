@@ -77,6 +77,8 @@ public class JsonIndexWriter implements IndexWriter {
 
     /** Output stream for json data. */
     protected DataOutputStream jsonOut;
+    /** The file that we write out to. */
+    protected Path outFile;
 
     @Override
     public void open(Configuration conf, String name) throws IOException {
@@ -121,8 +123,7 @@ public class JsonIndexWriter implements IndexWriter {
     }
 
     private void createStream() throws IOException {
-        String outputPath = String.format("%s/%s/", baseOutputPath, DATE_PARTITION_FORMAT.format(new Date()));
-        Path outputDir = new Path(outputPath);
+        Path outputDir = buildOutputPath();
         FileSystem fs = outputDir.getFileSystem(config);
         // we do not want to write checksum files ever since it blows up EMR/Athena
         fs.setWriteChecksum(false);
@@ -142,22 +143,22 @@ public class JsonIndexWriter implements IndexWriter {
             codec.setConf(config);
             filename += codec.getDefaultExtension();
 
-            Path jsonLocalOutFile = new Path(outputDir, filename);
-            if (fs.exists(jsonLocalOutFile)) {
+            outFile = new Path(outputDir, filename);
+            if (fs.exists(outFile)) {
                 // clean-up
-                LOG.warn("Removing existing output path {}", jsonLocalOutFile);
-                fs.delete(jsonLocalOutFile, true);
+                LOG.warn("Removing existing output path {}", outFile);
+                fs.delete(outFile, true);
             }
 
-            jsonOut = new DataOutputStream(codec.createOutputStream(fs.create(jsonLocalOutFile)));
+            jsonOut = new DataOutputStream(codec.createOutputStream(fs.create(outFile)));
         } else {
-            Path jsonLocalOutFile = new Path(outputDir, filename);
-            if (fs.exists(jsonLocalOutFile)) {
+            outFile = new Path(outputDir, filename);
+            if (fs.exists(outFile)) {
                 // clean-up
-                LOG.warn("Removing existing output path {}", jsonLocalOutFile);
-                fs.delete(jsonLocalOutFile, true);
+                LOG.warn("Removing existing output path {}", outFile);
+                fs.delete(outFile, true);
             }
-            jsonOut = new DataOutputStream(fs.create(jsonLocalOutFile));
+            jsonOut = new DataOutputStream(fs.create(outFile));
         }
     }
 
@@ -212,7 +213,19 @@ public class JsonIndexWriter implements IndexWriter {
 
     @Override
     public void close() throws IOException {
+        // On close, if we didn't write anything (an empty file), we delete the file
+        // since empty files break Athena schema recognition
+        boolean isEmpty = jsonOut.size() == 0;
+
         jsonOut.close();
+
+        if (isEmpty) {
+            LOG.info("Empty file detected, removing: " + outFile.toString());
+            FileSystem fs = buildOutputPath().getFileSystem(config);
+            if (fs.exists(outFile)) {
+                fs.delete(outFile, true);
+            }
+        }
     }
 
     @Override
@@ -250,6 +263,10 @@ public class JsonIndexWriter implements IndexWriter {
                 this.baseOutputPath));
 
         return properties;
+    }
+
+    private Path buildOutputPath() {
+        return new Path(String.format("%s/%s/", baseOutputPath, DATE_PARTITION_FORMAT.format(new Date())));
     }
 
     private boolean shouldCompressFile() {

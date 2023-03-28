@@ -36,6 +36,7 @@ import org.apache.nutch.util.NutchConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.minidev.json.JSONObject;
+import net.minidev.json.JSONStyle;
 
 /**
  * JsonIndexWriter. This pluggable indexer writes the fields configured to a file in json-lines
@@ -207,7 +208,9 @@ public class JsonIndexWriter implements IndexWriter {
             }
         }
 
-        jsonOut.write(obj.toString().getBytes(ENCODING));
+        // JSONStyle.FLAG_PROTECT_4WEB ensures that forward-slashes are NOT escaped so that URLs
+        // are easier to read
+        jsonOut.write(obj.toJSONString(new JSONStyle(JSONStyle.FLAG_PROTECT_4WEB)).getBytes(ENCODING));
         jsonOut.write("\r\n".getBytes(ENCODING));
     }
 

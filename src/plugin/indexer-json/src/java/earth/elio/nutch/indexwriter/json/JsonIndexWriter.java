@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.UUID;
 
+import net.minidev.json.reader.JsonWriterI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONStyle;
+import net.minidev.json.JSONValue;
 
 /**
  * JsonIndexWriter. This pluggable indexer writes the fields configured to a file in json-lines
@@ -49,6 +51,7 @@ public class JsonIndexWriter implements IndexWriter {
             .getLogger(MethodHandles.lookup().lookupClass());
     private static final String ENCODING = "UTF-8";
     private static final DateFormat DATE_PARTITION_FORMAT = new SimpleDateFormat("'y'=yyyy/'m'=MM/'d'=dd/'h'=HH");
+    private static final DateFormat DATE_VALUE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss+00:00");
 
     private Configuration config;
     /**
@@ -74,6 +77,18 @@ public class JsonIndexWriter implements IndexWriter {
     private final static Set<String> ACCEPTED_COMPRESSIONS = new HashSet<>(1);
     static {
         ACCEPTED_COMPRESSIONS.add(JsonConstants.GZIP);
+
+        // set the date format for date objects to be ISO 8601 by default
+        JSONValue.registerWriter(
+            Date.class,
+            new JsonWriterI<Date>() {
+                public void writeJSONString(Date value, Appendable out, JSONStyle compression) throws IOException {
+                    out.append('"');
+                    JSONValue.escape(DATE_VALUE_FORMAT.format(value), out, compression);
+                    out.append('"');
+                }
+            }
+        );
     }
 
     /** Output stream for json data. */

@@ -365,7 +365,7 @@ public class HtmlParser implements Parser {
     this.htmlParseFilters = new HtmlParseFilters(getConf());
     this.parserImpl = getConf().get("parser.html.impl", "neko");
     this.defaultCharEncoding = getConf().get(
-        "parser.character.encoding.default", "windows-1252");
+        "parser.character.encoding.default", "utf-8");
     this.utils = new DOMContentUtils(conf);
     this.cachingPolicy = getConf().get("parser.caching.forbidden.policy",
         Nutch.CACHING_FORBIDDEN_CONTENT);

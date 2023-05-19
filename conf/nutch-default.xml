@@ -1624,7 +1624,7 @@
 
 <property>
   <name>parser.character.encoding.default</name>
-  <value>windows-1252</value>
+  <value>utf-8</value>
   <description>The character encoding to fall back to when no other information
   is available</description>
 </property>

@@ -231,6 +231,11 @@ public class Generator extends NutchTool implements Tool {
       }
       CrawlDatum crawlDatum = value;
 
+      // temporary change to only pick URLs once for now.
+      if(crawlDatum.getStatus() != CrawlDatum.STATUS_DB_UNFETCHED) {
+        return;
+      }
+
       // check fetch schedule
       if (!schedule.shouldFetch(url, crawlDatum, curTime)) {
         LOG.debug("-shouldFetch rejected '{}', fetchTime={}, curTime={}", url,

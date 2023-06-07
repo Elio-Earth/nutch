@@ -110,7 +110,9 @@ public class JsonIndexWriter implements IndexWriter {
     @Override
     public void open(IndexWriterParams parameters) throws IOException {
         singleFields.addAll(retrieveFields(parameters, JsonConstants.SINGLE_FIELDS));
-        arrayFields.addAll(retrieveFields(parameters, JsonConstants.ARRAY_FIELDS));
+        if(parameters.get(JsonConstants.ARRAY_FIELDS, "").trim().length() > 0) {
+            arrayFields.addAll(retrieveFields(parameters, JsonConstants.ARRAY_FIELDS));
+        }
 
         LOG.info("fields =");
         for (String f : singleFields) {

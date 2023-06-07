@@ -99,11 +99,14 @@ public class CCIndexingFilter implements IndexingFilter {
    */
   public void addFieldsFromUrl(NutchDocument doc, String urlString) {
     try {
+      // we have encountered some licenses HTML tags with duplicate urls separated by a space
+      // this handles that case
+      urlString = urlString.split("\\s")[0];
       URL url = new URL(urlString);
 
       String[] pathParts = url.getPath().split("/");
 
-      if(pathParts.length != 4) {
+      if(pathParts.length >= 4) {
         // we start at 2 since index 0 is empty and
         // index 1 is the "licenses" path segment
         addField(doc, LICENSE_KEY, pathParts[2]);

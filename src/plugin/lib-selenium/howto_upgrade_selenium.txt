@@ -13,3 +13,37 @@
    $ brew install gnu-sed --with-default-names
 
    You can then restart your terminal and the Regex + Sed command should work just fine!
+
+3. Remove the slf4j-api.*.jar since you will get runtime errors looking for the correct one.
+
+4. Now repeat these steps for lib-htmlunit.
+
+5. Re-import the project, follow the instructions in the README. If you want to keep your run configurations, save
+your workspace.xml file and then copy in the "<component name="RunManager"" section.
+
+6. To run the project in IntelliJ you need to re-order the dependencies of lucene-core-6.4.1.jar and
+lucene-core-8.8.2.jar. To do this close IntelliJ and open up the nutch.iml.
+
+PLACE this one:
+<orderEntry type="module-library">
+  <library name="lucene-core-6.4.1.jar">
+    <CLASSES>
+      <root url="jar://$MODULE_DIR$/build/plugins/scoring-similarity/lucene-core-6.4.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</orderEntry>
+
+ABOVE this one:
+<orderEntry type="module-library">
+  <library name="lucene-core-8.8.2.jar">
+    <CLASSES>
+      <root url="jar://$MODULE_DIR$/build/plugins/indexer-elastic/lucene-core-8.8.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</orderEntry>
+
+7. Re-open the project

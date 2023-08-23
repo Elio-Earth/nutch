@@ -97,6 +97,24 @@ public class HttpResponse implements Response {
 
     content = page.getBytes("UTF-8");
 
+    // truncate content if over the max.
+    if (http.getMaxContent() >= 0 && content.length > http.getMaxContent()) {
+      ByteArrayInputStream in = new ByteArrayInputStream(content);
+      byte[] buffer = new byte[HttpBase.BUFFER_SIZE];
+      int bufferFilled = 0;
+      int totalRead = 0;
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      while (
+          (bufferFilled = in.read(buffer, 0, buffer.length)) != -1
+          && totalRead + bufferFilled <= http.getMaxContent()
+      ) {
+        totalRead += bufferFilled;
+        out.write(buffer, 0, bufferFilled);
+      }
+
+      content = out.toByteArray();
+    }
+
     // Since we cannot get header or response information from Selenium if the request is successful
     // we need to assume some things for further processing
     code = 200;

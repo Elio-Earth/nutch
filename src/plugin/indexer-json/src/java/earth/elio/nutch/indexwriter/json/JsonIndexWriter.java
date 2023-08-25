@@ -178,6 +178,7 @@ public class JsonIndexWriter implements IndexWriter {
             }
             jsonOut = new DataOutputStream(fs.create(outFile));
         }
+        LOG.info("Outputting to: " + outFile.toString());
     }
 
     private Collection<? extends String> retrieveFields(IndexWriterParams parameters, String configFieldName) throws IOException {

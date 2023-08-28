@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="31fa48ef-7e87-43a8-93f3-0cbe3f2f0430" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2SoV10IRd9BSFhXnTtk5go56qvc" />
+  <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;TODO_SCOPE&quot;: &quot;All Places&quot;
+  }
+}</component>
+  <component name="RunManager" selected="Application.ParseSegment">
+    <configuration name="FetcherThread" type="Application" factoryName="Application">
+      <classpathModifications>
+        <entry path="$PROJECT_DIR$/runtime/local/lib/apache-nutch-1.20-SNAPSHOT.jar" />
+        <entry path="$PROJECT_DIR$/runtime/local/conf" />
+        <entry exclude="true" path="$PROJECT_DIR$/src/bin" />
+        <entry exclude="true" path="$PROJECT_DIR$/runtime/local/classes" />
+        <entry exclude="true" path="$PROJECT_DIR$/conf" />
+      </classpathModifications>
+      <option name="MAIN_CLASS_NAME" value="org.apache.nutch.fetcher.Fetcher" />
+      <module name="nutch" />
+      <option name="PROGRAM_PARAMETERS" value="-D fetcher.timelimit.mins=180 $PROJECT_DIR$/crawl/segments/20230719210010" />
+      <option name="VM_PARAMETERS" value="-Xmx4096m -Dhadoop.log.dir=$PROJECT_DIR$/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=2 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/runtime/local" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Generator" type="Application" factoryName="Application">
+      <classpathModifications>
+        <entry path="$PROJECT_DIR$/runtime/local/conf" />
+      </classpathModifications>
+      <option name="MAIN_CLASS_NAME" value="org.apache.nutch.crawl.Generator" />
+      <module name="nutch" />
+      <option name="PROGRAM_PARAMETERS" value="$PROJECT_DIR$/crawl/crawldb $PROJECT_DIR$/crawl/segments -topN 50000 -numFetchers 1 -noFilter" />
+      <option name="VM_PARAMETERS" value="-Xmx4096m -Dhadoop.log.dir=$PROJECT_DIR$/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=1 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/runtime/local" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ParseSegment" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="org.apache.nutch.parse.ParseSegment" />
+      <module name="nutch" />
+      <option name="PROGRAM_PARAMETERS" value="$PROJECT_DIR$/crawl/segments/20230828113026" />
+      <option name="VM_PARAMETERS" value="-Xmx4096m -Dhadoop.log.dir=$PROJECT_DIR$/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=1 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true -Dmapreduce.task.skip.start.attempts=2 -Dmapreduce.map.skip.maxrecords=1" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/runtime/local" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="SiteMap Urls" type="Application" factoryName="Application">
+      <classpathModifications>
+        <entry path="$PROJECT_DIR$/runtime/local/conf" />
+      </classpathModifications>
+      <option name="MAIN_CLASS_NAME" value="org.apache.nutch.util.SitemapProcessor" />
+      <module name="nutch" />
+      <option name="PROGRAM_PARAMETERS" value="$PROJECT_DIR$/crawl/crawldb -sitemapUrls $USER_HOME$/Downloads/sitemaps/sitemap_20230217_test.txt -threads 1" />
+      <option name="VM_PARAMETERS" value="-Xmx4096m -Dhadoop.log.dir=$PROJECT_DIR$/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=2 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/runtime/local" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="SitemapProcessor" type="Application" factoryName="Application">
+      <classpathModifications>
+        <entry path="$PROJECT_DIR$/runtime/local/conf" />
+      </classpathModifications>
+      <option name="MAIN_CLASS_NAME" value="org.apache.nutch.util.SitemapProcessor" />
+      <module name="nutch" />
+      <option name="PROGRAM_PARAMETERS" value="$PROJECT_DIR$/crawl/crawldb -sitemapUrls $PROJECT_DIR$/sitemap -threads 50" />
+      <option name="VM_PARAMETERS" value="-Xmx4096m -Dhadoop.log.dir=$PROJECT_DIR$/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=1 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/runtime/local" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Application.SiteMap Urls" />
+      <item itemvalue="Application.FetcherThread" />
+      <item itemvalue="Application.SitemapProcessor" />
+      <item itemvalue="Application.Generator" />
+      <item itemvalue="Application.ParseSegment" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="31fa48ef-7e87-43a8-93f3-0cbe3f2f0430" name="Changes" comment="" />
+      <created>1689812709193</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1689812709193</updated>
+    </task>
+    <servers />
+  </component>
+</project>

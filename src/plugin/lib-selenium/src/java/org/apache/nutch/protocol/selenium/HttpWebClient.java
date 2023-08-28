@@ -193,6 +193,8 @@ public class HttpWebClient {
     if (StringUtils.isNotBlank(chromeBinary)) {
       chromeOptions.setBinary(chromeBinary);
     }
+    // needed for chromedriver >= 114
+    // chromeOptions.addArguments("--remote-allow-origins=*");
 
     ChromeEvadeWebClient.addArguments(chromeOptions, conf);
     

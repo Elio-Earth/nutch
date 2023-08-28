@@ -117,30 +117,44 @@ You must [configure the nutch-site.xml](https://cwiki.apache.org/confluence/disp
 
 Now create a Java Application Configuration, choose org.apache.nutch.crawl.Injector, add two paths as arguments. First one is the crawldb directory, second one is the URL directory where, the injector can read urls. Now run your configuration.
 
-If we still see the ```No plugins found on paths of property plugin.folders="plugins"```, update the plugin.folders in the nutch-default.xml, this is a quick fix, but should not be used.
-
-
 ### Intellij IDEA
 
 First install the [IvyIDEA Plugin](https://plugins.jetbrains.com/plugin/3612-ivyidea). then run ```ant eclipse```. This will create the necessary
 .classpath and .project files so that Intellij can import the project in the next step.
 
-In Intellij IDEA, select File > New > Project from Existing Sources. Select the nutch home directory and click "Open".
+In Intellij IDEA, select File > New > Project from Existing Sources. Select the nutch home directory and click "Open". On the "Import Project" screen select the
+"Import project from external model" radio button and select "Eclipse". Click "Create". On the next screen the "Eclipse projects directory" should be already set to
+the nutch folder. Leave the "Create module files near .classpath files" radio button selected. Click "Next" on the next screens. On the project SDK screen select
+a Java 11 SDK and click "Create".
 
-On the "Import Project" screen select the "Import project from external model" radio button and select "Eclipse".
-Click "Create". On the next screen the "Eclipse projects directory" should be already set to the nutch folder.
-Leave the "Create module files near .classpath files" radio button selected.
-Click "Next" on the next screens. On the project SDK screen select Java 11 and click "Create".
+Once the project is imported, you might get a popup asking you if you want to re-use "nutch.eml". Click Yes. You will
+see a popup saying "Ant build scripts found". Click "Add Ant build file". If you don't get the pop-up, I'd suggest going through
+the steps again as this happens from time to time. There is another Ant popup that says "Frameworks detected - IvyIDEA Framework detected"
+that asks you to configure the project. Do NOT click "Configure". If you get a pop-up asking if you want to re-use
+nutch.eml, click No.
 
-Once the project is imported, you will see a popup saying "Ant build scripts found", "Frameworks detected - IvyIDEA Framework detected". Click "Import".
-If you don't get the pop-up, I'd suggest going through the steps again as this happens from time to time. There is another
-Ant popup that asks you to configure the project. Do NOT click "Configure".
+**Note**: If you are getting import errors it probably means that library paths are "broken". This happens if you import the project and the build
+directory that is generated while running "ant eclipse" is not present. You can confirm this by opening up the nutch.iml file in the root of the
+project directory and seeing if the lib elements look like:
 
-To import the code-style, Go to Intellij IDEA > Preferences > Editor > Code Style > Java.
+```xml
+<libelement value="file://build/lib/commons-math3-3.1.1.jar!/" />
+```
 
-For the Scheme dropdown select "Project". Click the gear icon and select "Import Scheme" > "Eclipse XML file".
+They should look like:
 
-Select the eclipse-format.xml file and click "Open". On next screen check the "Current Scheme" checkbox and hit OK.
+```xml
+<libelement value="jar://$MODULE_DIR$/build/lib/commons-math3-3.1.1.jar!/" />
+```
+
+If this happens you need to run ant eclipse and re-import the project.
+
+To import the code-style, Go to Intellij IDEA > Preferences > Editor > Code Style > Java. For the Scheme dropdown
+select "Project". Click the gear icon and select "Import Scheme" > "Eclipse XML file". Select the eclipse-format.xml
+file and click "Open". On next screen check the "Current Scheme" checkbox and hit OK.
+
+There are also Run Configurations saved in .backupidea/workspace.xml. Copy the entire "<component name="RunManager"\>
+tag into your .idea/workspace.xml (make sure you don't already have a RunManager component).
 
 ### Running in Intellij IDEA
 
@@ -155,3 +169,21 @@ Running in Intellij
 - Select "Modify options" > "Add VM Options". Add the VM options needed. You can get these by running the crawl executable for your job (e.g. -Xmx4096m -Dhadoop.log.dir=/Users/kamil/workspace/external/nutch/runtime/local/logs -Dhadoop.log.file=hadoop.log -Dmapreduce.job.reduces=2 -Dmapreduce.reduce.speculative=false -Dmapreduce.map.speculative=false -Dmapreduce.map.output.compress=true)
 
 **Note**: You will need to manually trigger a build through ANT to get latest updated changes when running. This is because the ant build system is separate from the Intellij one.
+
+**Note**: If you get an error saying that org.apache.lucene.analysis.standard.StandardAnalyzer.STOP_WORDS_SET does not exist you need to edit the nutch.iml to put
+
+```xml
+<orderEntry type="module-library">
+  <library name="lucene-analyzers-common-6.4.1.jar">
+    <CLASSES>
+      <root url="jar://$MODULE_DIR$/build/plugins/scoring-similarity/lucene-analyzers-common-6.4.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</orderEntry>
+```
+
+at the top of the orderEntry's (needs to be above lucene-analyzers-common-8.8.2.jar). And do a clean and re-build. This is because STOP_WORDS_SET was removed in lucene-analyzers-common-8.8.2.jar and the resolution of libraries is not working properly in Intellij. You also might need to move 
+
+**Note**: If you get errors that org.junit doesn't exist you need to run the "resolve-test" target.

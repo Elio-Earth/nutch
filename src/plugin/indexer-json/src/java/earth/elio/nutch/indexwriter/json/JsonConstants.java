@@ -27,5 +27,6 @@ public interface JsonConstants {
 
     String GZIP = "gzip";
     String NO_COMPRESS = "false";
+    String SKIP_PDF_BINARY_CONTENT = "skip.pdf.binary.content";
 
 }

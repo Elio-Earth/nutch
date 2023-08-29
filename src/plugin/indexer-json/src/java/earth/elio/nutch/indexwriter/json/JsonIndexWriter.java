@@ -74,6 +74,8 @@ public class JsonIndexWriter implements IndexWriter {
      */
     private String compress;
 
+    private boolean skipPdfBinaryContent;
+
     private final static Set<String> ACCEPTED_COMPRESSIONS = new HashSet<>(1);
     static {
         ACCEPTED_COMPRESSIONS.add(JsonConstants.GZIP);
@@ -136,6 +138,9 @@ public class JsonIndexWriter implements IndexWriter {
         if (shouldCompressFile() && !ACCEPTED_COMPRESSIONS.contains(compress)) {
             throw new IOException("Unsupported compression type " + compress);
         }
+
+        skipPdfBinaryContent = parameters.getBoolean(JsonConstants.SKIP_PDF_BINARY_CONTENT, false);
+        LOG.info("Skip writing binary content of PDF: " + skipPdfBinaryContent);
 
         createStream();
     }
@@ -206,13 +211,22 @@ public class JsonIndexWriter implements IndexWriter {
     public void write(NutchDocument doc) throws IOException {
         JSONObject obj = new JSONObject();
 
+        boolean isPdf = doc.getField("type") != null && doc.getField("type").getValues().get(0).equals("application/pdf");
         for (String singleFieldName : singleFields) {
             NutchField field = doc.getField(singleFieldName);
             if (field == null) {
                 obj.put(singleFieldName, null);
             } else {
                 List<Object> values = field.getValues();
-                obj.put(singleFieldName, values.get(0));
+                // allow skipping writing the raw PDF content if configured to do so
+                // storing the raw PDF content can lead to very large records which
+                // some systems (like AWS Athena) might not be able to read.
+                if (skipPdfBinaryContent && isPdf && singleFieldName.equals("binaryContent")) {
+                    obj.put(singleFieldName, "");
+                } else {
+                    obj.put(singleFieldName, values.get(0));
+                }
+
             }
         }
 
@@ -282,6 +296,9 @@ public class JsonIndexWriter implements IndexWriter {
         properties.put(JsonConstants.JSON_BASE_OUTPUT_PATH, new AbstractMap.SimpleEntry<>(
                 "The base output path for the data. Must be specified. We add partition information to the end.",
                 this.baseOutputPath));
+        properties.put(JsonConstants.SKIP_PDF_BINARY_CONTENT, new AbstractMap.SimpleEntry<>(
+            "If enabled, will write an empty string for the binary content field for PDF files (will still output the extracted text)",
+            this.skipPdfBinaryContent));
 
         return properties;
     }

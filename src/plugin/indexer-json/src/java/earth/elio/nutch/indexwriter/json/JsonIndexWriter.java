@@ -74,7 +74,15 @@ public class JsonIndexWriter implements IndexWriter {
      */
     private String compress;
 
+    /** If true, we will skip writing the binaryContent field for a PDF document. Some systems
+     * such as AWS Athena are unable to process large fields and we cannot truncate a PDF
+     * file and still read it.*/
     private boolean skipPdfBinaryContent;
+
+    /** The maximum string length to write out in the binaryContent field. If this
+     * value is -1, no truncation occurs. This is a good way to enforce a max
+     * size on records since the binary content is often the largest field. */
+    private int maxBinaryContentLength;
 
     private final static Set<String> ACCEPTED_COMPRESSIONS = new HashSet<>(1);
     static {
@@ -141,6 +149,9 @@ public class JsonIndexWriter implements IndexWriter {
 
         skipPdfBinaryContent = parameters.getBoolean(JsonConstants.SKIP_PDF_BINARY_CONTENT, false);
         LOG.info("Skip writing binary content of PDF: " + skipPdfBinaryContent);
+
+        maxBinaryContentLength = parameters.getInt(JsonConstants.MAX_BINARY_CONTENT_LENGTH, -1);
+        LOG.info("Max length of binaryContent field: " + maxBinaryContentLength);
 
         createStream();
     }
@@ -217,16 +228,18 @@ public class JsonIndexWriter implements IndexWriter {
             if (field == null) {
                 obj.put(singleFieldName, null);
             } else {
-                List<Object> values = field.getValues();
-                // allow skipping writing the raw PDF content if configured to do so
-                // storing the raw PDF content can lead to very large records which
-                // some systems (like AWS Athena) might not be able to read.
-                if (skipPdfBinaryContent && isPdf && singleFieldName.equals("binaryContent")) {
-                    obj.put(singleFieldName, "");
-                } else {
-                    obj.put(singleFieldName, values.get(0));
+                Object valueToWrite = field.getValues().get(0);
+                // special handling for binaryContent field since it can get
+                // very big and downstream systems can choke on the size of this
+                // field
+                if(singleFieldName.equals("binaryContent")) {
+                    if (skipPdfBinaryContent && isPdf) {
+                        valueToWrite = "";
+                    } else if (maxBinaryContentLength > -1 && ((String) valueToWrite).length() > maxBinaryContentLength) {
+                        valueToWrite = ((String) valueToWrite).substring(0, maxBinaryContentLength);
+                    }
                 }
-
+                obj.put(singleFieldName, valueToWrite);
             }
         }
 
@@ -299,6 +312,9 @@ public class JsonIndexWriter implements IndexWriter {
         properties.put(JsonConstants.SKIP_PDF_BINARY_CONTENT, new AbstractMap.SimpleEntry<>(
             "If enabled, will write an empty string for the binary content field for PDF files (will still output the extracted text)",
             this.skipPdfBinaryContent));
+        properties.put(JsonConstants.MAX_BINARY_CONTENT_LENGTH, new AbstractMap.SimpleEntry<>(
+            "The length in characters to truncate the binaryContent field. If -1, no truncation occurs.",
+            this.maxBinaryContentLength));
 
         return properties;
     }

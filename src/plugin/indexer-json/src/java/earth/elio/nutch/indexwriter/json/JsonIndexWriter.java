@@ -74,15 +74,18 @@ public class JsonIndexWriter implements IndexWriter {
      */
     private String compress;
 
-    /** If true, we will skip writing the binaryContent field for a PDF document. Some systems
-     * such as AWS Athena are unable to process large fields and we cannot truncate a PDF
-     * file and still read it.*/
-    private boolean skipPdfBinaryContent;
+    /** Controls whether to write the record to the "large" path or the
+     * "normal" path. If the binary content field is larger than this number
+     * for a record it is written to the "large" path. This gives you the
+     * control to split off large records from the other parts of the dataset
+     * so that downstream systems do not choke on these large records.*/
+    private int binaryContentLargeCutoffChars;
+    /**
+     * The path to write "large" files if their binary content is larger
+     * than binaryContentLengthCutoff. We write a single file per record.
+     */
+    private String largeBaseOutputPath = "";
 
-    /** The maximum string length to write out in the binaryContent field. If this
-     * value is -1, no truncation occurs. This is a good way to enforce a max
-     * size on records since the binary content is often the largest field. */
-    private int maxBinaryContentLength;
 
     private final static Set<String> ACCEPTED_COMPRESSIONS = new HashSet<>(1);
     static {
@@ -100,11 +103,7 @@ public class JsonIndexWriter implements IndexWriter {
             }
         );
     }
-
-    /** Output stream for json data. */
-    protected DataOutputStream jsonOut;
-    /** The file that we write out to. */
-    protected Path outFile;
+    protected OpenJsonStream openJsonStream;
 
     @Override
     public void open(Configuration conf, String name) throws IOException {
@@ -147,17 +146,38 @@ public class JsonIndexWriter implements IndexWriter {
             throw new IOException("Unsupported compression type " + compress);
         }
 
-        skipPdfBinaryContent = parameters.getBoolean(JsonConstants.SKIP_PDF_BINARY_CONTENT, false);
-        LOG.info("Skip writing binary content of PDF: " + skipPdfBinaryContent);
+        // configuration for large files
+        binaryContentLargeCutoffChars = parameters.getInt(JsonConstants.BINARY_CONTENT_LENGTH_LARGE_CUTOFF, -1);
+        largeBaseOutputPath = parameters.get(JsonConstants.LARGE_JSON_BASE_OUTPUT_PATH);
+        if(StringUtils.isBlank(largeBaseOutputPath)) {
+            if (binaryContentLargeCutoffChars > 0) {
+                throw new IOException(
+                    "Large record cutoff defined at "
+                        + binaryContentLargeCutoffChars +
+                        " characters but "
+                        + JsonConstants.LARGE_JSON_BASE_OUTPUT_PATH
+                        + " is not defined."
+                );
+            } else {
+                LOG.info("No routing for large files configured.");
+            }
+        } else {
+            // standardize the base output path to NOT have a trailing slash
+            if (largeBaseOutputPath.endsWith("/")) {
+                largeBaseOutputPath = largeBaseOutputPath.substring(0, largeBaseOutputPath.length() - 1);
+            }
+            if (binaryContentLargeCutoffChars > 0) {
+                LOG.info("Large Base Output path is {} and files with binary content > {} characters will be routed there", largeBaseOutputPath,
+                    binaryContentLargeCutoffChars);
+            } else {
+                LOG.info("No routing to Large Base Output path as {} is not defined", JsonConstants.LARGE_JSON_BASE_OUTPUT_PATH);
+            }
+        }
 
-        maxBinaryContentLength = parameters.getInt(JsonConstants.MAX_BINARY_CONTENT_LENGTH, -1);
-        LOG.info("Max length of binaryContent field: " + maxBinaryContentLength);
-
-        createStream();
+        openJsonStream = createStream(buildOutputPath());
     }
 
-    private void createStream() throws IOException {
-        Path outputDir = buildOutputPath();
+    private OpenJsonStream createStream(Path outputDir) throws IOException {
         FileSystem fs = outputDir.getFileSystem(config);
         // we do not want to write checksum files ever since it blows up EMR/Athena
         fs.setWriteChecksum(false);
@@ -177,24 +197,27 @@ public class JsonIndexWriter implements IndexWriter {
             codec.setConf(config);
             filename += codec.getDefaultExtension();
 
-            outFile = new Path(outputDir, filename);
+            Path outFile = new Path(outputDir, filename);
             if (fs.exists(outFile)) {
                 // clean-up
                 LOG.warn("Removing existing output path {}", outFile);
                 fs.delete(outFile, true);
             }
 
-            jsonOut = new DataOutputStream(codec.createOutputStream(fs.create(outFile)));
+            DataOutputStream jsonOut = new DataOutputStream(codec.createOutputStream(fs.create(outFile)));
+            LOG.info("Opening file (to output): {}", outFile);
+            return new OpenJsonStream(jsonOut, outFile);
         } else {
-            outFile = new Path(outputDir, filename);
+            Path outFile = new Path(outputDir, filename);
             if (fs.exists(outFile)) {
                 // clean-up
                 LOG.warn("Removing existing output path {}", outFile);
                 fs.delete(outFile, true);
             }
-            jsonOut = new DataOutputStream(fs.create(outFile));
+            DataOutputStream jsonOut = new DataOutputStream(fs.create(outFile));
+            LOG.info("Opening file (to output): {}", outFile);
+            return new OpenJsonStream(jsonOut, outFile);
         }
-        LOG.info("Outputting to: " + outFile.toString());
     }
 
     private Collection<? extends String> retrieveFields(IndexWriterParams parameters, String configFieldName) throws IOException {
@@ -222,23 +245,20 @@ public class JsonIndexWriter implements IndexWriter {
     public void write(NutchDocument doc) throws IOException {
         JSONObject obj = new JSONObject();
 
-        boolean isPdf = doc.getField("type") != null && doc.getField("type").getValues().get(0).equals("application/pdf");
+        boolean largeRecord = false;
+
         for (String singleFieldName : singleFields) {
             NutchField field = doc.getField(singleFieldName);
             if (field == null) {
                 obj.put(singleFieldName, null);
             } else {
                 Object valueToWrite = field.getValues().get(0);
-                // special handling for binaryContent field since it can get
-                // very big and downstream systems can choke on the size of this
-                // field
-                if(singleFieldName.equals("binaryContent")) {
-                    if (skipPdfBinaryContent && isPdf) {
-                        valueToWrite = "";
-                    } else if (maxBinaryContentLength > -1 && ((String) valueToWrite).length() > maxBinaryContentLength) {
-                        valueToWrite = ((String) valueToWrite).substring(0, maxBinaryContentLength);
-                    }
+
+                if(singleFieldName.equals("binaryContent") &&
+                    binaryContentLargeCutoffChars > -1 && ((String) valueToWrite).length() > binaryContentLargeCutoffChars) {
+                        largeRecord = true;
                 }
+
                 obj.put(singleFieldName, valueToWrite);
             }
         }
@@ -253,25 +273,44 @@ public class JsonIndexWriter implements IndexWriter {
             }
         }
 
+        DataOutputStream streamToWrite = openJsonStream.getJsonOut();
+        OpenJsonStream openJsonStream = null;
+        if(largeRecord) {
+            openJsonStream = createStream(buildLargeOutputPath());
+            streamToWrite = openJsonStream.getJsonOut();
+        }
+
         // JSONStyle.FLAG_PROTECT_4WEB ensures that forward-slashes are NOT escaped so that URLs
         // are easier to read
-        jsonOut.write(obj.toJSONString(new JSONStyle(JSONStyle.FLAG_PROTECT_4WEB)).getBytes(ENCODING));
-        jsonOut.write("\r\n".getBytes(ENCODING));
+        streamToWrite.write(obj.toJSONString(new JSONStyle(JSONStyle.FLAG_PROTECT_4WEB)).getBytes(ENCODING));
+        streamToWrite.write("\r\n".getBytes(ENCODING));
+
+        if(largeRecord) {
+            if(null == openJsonStream) {
+                throw new IOException("Somehow large record is true but no stream is open to write to. This should never happen.");
+            } else {
+                closeStream(openJsonStream);
+            }
+        }
     }
 
     @Override
     public void close() throws IOException {
+        closeStream(openJsonStream);
+    }
+
+    private void closeStream(OpenJsonStream openStream) throws IOException {
         // On close, if we didn't write anything (an empty file), we delete the file
         // since empty files break Athena schema recognition
-        boolean isEmpty = jsonOut.size() == 0;
+        boolean isEmpty = openStream.getJsonOut().size() == 0;
 
-        jsonOut.close();
+        openStream.getJsonOut().close();
 
         if (isEmpty) {
-            LOG.info("Empty file detected, removing: " + outFile.toString());
+            LOG.info("Empty file detected, removing: " + openStream.getOutFile().toString());
             FileSystem fs = buildOutputPath().getFileSystem(config);
-            if (fs.exists(outFile)) {
-                fs.delete(outFile, true);
+            if (fs.exists(openStream.getOutFile())) {
+                fs.delete(openStream.getOutFile(), true);
             }
         }
     }
@@ -309,18 +348,22 @@ public class JsonIndexWriter implements IndexWriter {
         properties.put(JsonConstants.JSON_BASE_OUTPUT_PATH, new AbstractMap.SimpleEntry<>(
                 "The base output path for the data. Must be specified. We add partition information to the end.",
                 this.baseOutputPath));
-        properties.put(JsonConstants.SKIP_PDF_BINARY_CONTENT, new AbstractMap.SimpleEntry<>(
-            "If enabled, will write an empty string for the binary content field for PDF files (will still output the extracted text)",
-            this.skipPdfBinaryContent));
-        properties.put(JsonConstants.MAX_BINARY_CONTENT_LENGTH, new AbstractMap.SimpleEntry<>(
-            "The length in characters to truncate the binaryContent field. If -1, no truncation occurs.",
-            this.maxBinaryContentLength));
+        properties.put(JsonConstants.LARGE_JSON_BASE_OUTPUT_PATH, new AbstractMap.SimpleEntry<>(
+            "The base output path for the 'large' data. Optional. We add partition information to the end.",
+            this.largeBaseOutputPath));
+        properties.put(JsonConstants.BINARY_CONTENT_LENGTH_LARGE_CUTOFF, new AbstractMap.SimpleEntry<>(
+            "The cut off in characters for a record to be routed to the large output path. (negative numbers disable this). If this is enabled, then large_base_output_path must be specified.",
+            this.binaryContentLargeCutoffChars));
 
         return properties;
     }
 
     private Path buildOutputPath() {
         return new Path(String.format("%s/%s/", baseOutputPath, DATE_PARTITION_FORMAT.format(new Date())));
+    }
+
+    private Path buildLargeOutputPath() {
+        return new Path(String.format("%s/%s/", largeBaseOutputPath, DATE_PARTITION_FORMAT.format(new Date())));
     }
 
     private boolean shouldCompressFile() {

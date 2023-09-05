@@ -27,7 +27,11 @@ public interface JsonConstants {
 
     String GZIP = "gzip";
     String NO_COMPRESS = "false";
-    String SKIP_PDF_BINARY_CONTENT = "skip.pdf.binary.content";
-    String MAX_BINARY_CONTENT_LENGTH = "binary.content.max.length";
+    String BINARY_CONTENT_LENGTH_LARGE_CUTOFF = "binary.content.length.large.cutoff";
+    /**
+     * The base output path for "large" data. Partition information is added to this path to compute
+     * the final path where the data will live.
+     */
+    String LARGE_JSON_BASE_OUTPUT_PATH = "large_base_output_path";
 
 }

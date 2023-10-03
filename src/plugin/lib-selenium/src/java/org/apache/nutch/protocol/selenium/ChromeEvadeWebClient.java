@@ -10,9 +10,9 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.devtools.v108.log.Log;
-import org.openqa.selenium.devtools.v108.page.Page;
-import org.openqa.selenium.devtools.v108.network.Network;
+import org.openqa.selenium.devtools.v117.log.Log;
+import org.openqa.selenium.devtools.v117.page.Page;
+import org.openqa.selenium.devtools.v117.network.Network;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,6 +110,7 @@ public class ChromeEvadeWebClient {
             "  })\n" +
             "});",
             Optional.empty(),
+            Optional.empty(),
             Optional.empty())
         );
     }
@@ -200,6 +201,7 @@ public class ChromeEvadeWebClient {
             "              ? Promise.resolve({ state: window.Notification.permission })\n" +
             "              : originalQuery(parameters)",
             Optional.empty(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -235,6 +237,7 @@ public class ChromeEvadeWebClient {
             "      // eslint-disable-next-line\n" +
             "      Function.prototype.toString = functionToString",
             Optional.empty(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -252,6 +255,7 @@ public class ChromeEvadeWebClient {
             "    objectToInspect = Object.getPrototypeOf(objectToInspect); }\n" +
             "  result.forEach(p => p.match(/.+_.+_(Array|Promise|Symbol)/ig)\n" +
             "  && delete window[p]&&console.log('removed',p))",
+            Optional.empty(),
             Optional.empty(),
             Optional.empty()
         ));
@@ -457,6 +461,7 @@ public class ChromeEvadeWebClient {
             "      }\n" +
             "    } catch (err) {}\n",
             Optional.empty(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -475,6 +480,7 @@ public class ChromeEvadeWebClient {
             "    const windowFrame = 74\n" +
             "    window.outerHeight = window.innerHeight + windowFrame\n" +
             "}\n",
+            Optional.empty(),
             Optional.empty(),
             Optional.empty()
         ));

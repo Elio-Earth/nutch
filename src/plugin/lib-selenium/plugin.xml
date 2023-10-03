@@ -35,70 +35,58 @@
      <library name="async-http-client-netty-utils-2.12.3.jar">
        <export name="*"/>
      </library>
-     <library name="auto-common-1.2.jar">
+     <library name="auto-service-annotations-1.1.1.jar">
        <export name="*"/>
      </library>
-     <library name="auto-service-1.0.1.jar">
+     <library name="byte-buddy-1.14.5.jar">
        <export name="*"/>
      </library>
-     <library name="auto-service-annotations-1.0.1.jar">
-       <export name="*"/>
-     </library>
-     <library name="byte-buddy-1.12.22.jar">
-       <export name="*"/>
-     </library>
-     <library name="checker-qual-3.12.0.jar">
+     <library name="checker-qual-3.33.0.jar">
        <export name="*"/>
      </library>
      <library name="commons-exec-1.3.jar">
        <export name="*"/>
      </library>
-     <library name="error_prone_annotations-2.11.0.jar">
+     <library name="error_prone_annotations-2.18.0.jar">
        <export name="*"/>
      </library>
-     <library name="failsafe-3.3.0.jar">
+     <library name="failsafe-3.3.2.jar">
        <export name="*"/>
      </library>
      <library name="failureaccess-1.0.1.jar">
        <export name="*"/>
      </library>
-     <library name="guava-31.1-jre.jar">
+     <library name="guava-32.1.2-jre.jar">
        <export name="*"/>
      </library>
-     <library name="j2objc-annotations-1.3.jar">
+     <library name="j2objc-annotations-2.8.jar">
        <export name="*"/>
      </library>
      <library name="jakarta.activation-1.2.2.jar">
        <export name="*"/>
      </library>
-     <library name="jcommander-1.82.jar">
-       <export name="*"/>
-     </library>
      <library name="jsr305-3.0.2.jar">
-       <export name="*"/>
-     </library>
-     <library name="jtoml-2.0.0.jar">
        <export name="*"/>
      </library>
      <library name="listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar">
        <export name="*"/>
      </library>
-     <library name="netty-buffer-4.1.87.Final.jar">
+     <library name="netty-buffer-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-codec-4.1.87.Final.jar">
+     <library name="netty-codec-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-codec-http-4.1.87.Final.jar">
+     <library name="netty-codec-http-4.1.96.Final.jar">
        <export name="*"/>
      </library>
      <library name="netty-codec-socks-4.1.60.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-common-4.1.87.Final.jar">
+     <library name="netty-common-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-handler-4.1.87.Final.jar">
+     <library name="netty-handler-4.1.96.Final.jar">
        <export name="*"/>
      </library>
      <library name="netty-handler-proxy-4.1.60.Final.jar">
@@ -107,115 +95,121 @@
      <library name="netty-reactive-streams-2.0.4.jar">
        <export name="*"/>
      </library>
-     <library name="netty-resolver-4.1.87.Final.jar">
+     <library name="netty-resolver-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-4.1.87.Final.jar">
+     <library name="netty-transport-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-classes-epoll-4.1.87.Final.jar">
+     <library name="netty-transport-classes-epoll-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-classes-kqueue-4.1.87.Final.jar">
+     <library name="netty-transport-classes-kqueue-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-native-epoll-4.1.87.Final.jar">
+     <library name="netty-transport-native-epoll-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-native-kqueue-4.1.87.Final.jar">
+     <library name="netty-transport-native-kqueue-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="netty-transport-native-unix-common-4.1.87.Final.jar">
+     <library name="netty-transport-native-unix-common-4.1.96.Final.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-api-1.22.0.jar">
+     <library name="opentelemetry-api-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-api-logs-1.22.0-alpha.jar">
+     <library name="opentelemetry-api-events-1.28.0-alpha.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-context-1.22.0.jar">
+     <library name="opentelemetry-context-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-exporter-logging-1.22.0.jar">
+     <library name="opentelemetry-exporter-logging-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-1.22.0.jar">
+     <library name="opentelemetry-extension-incubator-1.28.0-alpha.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-common-1.22.0.jar">
+     <library name="opentelemetry-sdk-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-extension-autoconfigure-1.22.0-alpha.jar">
+     <library name="opentelemetry-sdk-common-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-extension-autoconfigure-spi-1.22.0.jar">
+     <library name="opentelemetry-sdk-extension-autoconfigure-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-logs-1.22.0-alpha.jar">
+     <library name="opentelemetry-sdk-extension-autoconfigure-spi-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-metrics-1.22.0.jar">
+     <library name="opentelemetry-sdk-logs-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-sdk-trace-1.22.0.jar">
+     <library name="opentelemetry-sdk-metrics-1.28.0.jar">
        <export name="*"/>
      </library>
-     <library name="opentelemetry-semconv-1.22.0-alpha.jar">
+     <library name="opentelemetry-sdk-trace-1.28.0.jar">
+       <export name="*"/>
+     </library>
+     <library name="opentelemetry-semconv-1.28.0-alpha.jar">
        <export name="*"/>
      </library>
      <library name="reactive-streams-1.0.3.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-api-4.8.0.jar">
+     <library name="selenium-api-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-chrome-driver-4.8.0.jar">
+     <library name="selenium-chrome-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-chromium-driver-4.8.0.jar">
+     <library name="selenium-chromium-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-devtools-v107-4.8.0.jar">
+     <library name="selenium-devtools-v115-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-devtools-v108-4.8.0.jar">
+     <library name="selenium-devtools-v116-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-devtools-v109-4.8.0.jar">
+     <library name="selenium-devtools-v117-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-devtools-v85-4.8.0.jar">
+     <library name="selenium-devtools-v85-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-edge-driver-4.8.0.jar">
+     <library name="selenium-edge-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-firefox-driver-4.8.0.jar">
+     <library name="selenium-firefox-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-http-4.8.0.jar">
+     <library name="selenium-http-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-ie-driver-4.8.0.jar">
+     <library name="selenium-ie-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-java-4.8.0.jar">
+     <library name="selenium-java-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-json-4.8.0.jar">
+     <library name="selenium-json-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-manager-4.8.0.jar">
+     <library name="selenium-manager-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-remote-driver-4.8.0.jar">
+     <library name="selenium-os-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-safari-driver-4.8.0.jar">
+     <library name="selenium-remote-driver-4.13.0.jar">
        <export name="*"/>
      </library>
-     <library name="selenium-support-4.8.0.jar">
+     <library name="selenium-safari-driver-4.13.0.jar">
+       <export name="*"/>
+     </library>
+     <library name="selenium-support-4.13.0.jar">
        <export name="*"/>
      </library>
    </runtime>

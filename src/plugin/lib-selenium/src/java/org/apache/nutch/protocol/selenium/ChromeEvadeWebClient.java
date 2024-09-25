@@ -10,9 +10,9 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.devtools.v117.log.Log;
-import org.openqa.selenium.devtools.v117.page.Page;
-import org.openqa.selenium.devtools.v117.network.Network;
+import org.openqa.selenium.devtools.v126.log.Log;
+import org.openqa.selenium.devtools.v126.page.Page;
+import org.openqa.selenium.devtools.v126.network.Network;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

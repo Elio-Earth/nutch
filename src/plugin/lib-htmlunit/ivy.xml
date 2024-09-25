@@ -37,8 +37,8 @@
 
   <dependencies>
     <!-- begin selenium dependencies -->
-    <dependency org="org.seleniumhq.selenium" name="selenium-java" rev="4.13.0" />
-    <dependency org="org.seleniumhq.selenium" name="htmlunit-driver" rev="4.12.0" />
+    <dependency org="org.seleniumhq.selenium" name="selenium-java" rev="4.24.0" />
+    <dependency org="org.seleniumhq.selenium" name="htmlunit-driver" rev="4.13.0" />
     <!-- end selenium dependencies -->
   </dependencies>
   
